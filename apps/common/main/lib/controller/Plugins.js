@@ -64,10 +64,10 @@ define([
                         var appOptions = me.getApplication().getController('Main').appOptions;
 
                         if ( !appOptions.isEditMailMerge && !appOptions.isEditDiagram && !appOptions.isEditOle ) {
-                            // var tab = {action: 'plugins', caption: me.panelPlugins.groupCaption, dataHintTitle: 'E', layoutname: 'toolbar-plugins'};
-                            // me.$toolbarPanelPlugins = me.panelPlugins.getPanel();
+                             var tab = {action: 'plugins', caption: me.panelPlugins.groupCaption, dataHintTitle: 'E', layoutname: 'toolbar-plugins'};
+                             me.$toolbarPanelPlugins = me.panelPlugins.getPanel();
 
-                            // toolbar.addTab(tab, me.$toolbarPanelPlugins, 10);     // TODO: clear plugins list in left panel
+                             toolbar.addTab(tab, me.$toolbarPanelPlugins, 10);     // TODO: clear plugins list in left panel
                         }
                     }
                 },
@@ -211,8 +211,8 @@ define([
                 arr.push(plugin);
             });
             this.api.asc_pluginsRegister('', arr);
-            // if (storePlugins.hasVisible())
-            //     Common.NotificationCenter.trigger('tab:visible', 'plugins', Common.UI.LayoutManager.isElementVisible('toolbar-plugins'));
+             if (storePlugins.hasVisible())
+                 Common.NotificationCenter.trigger('tab:visible', 'plugins', Common.UI.LayoutManager.isElementVisible('toolbar-plugins'));
             Common.Gateway.pluginsReady();
         },
 
