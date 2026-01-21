@@ -1,7 +1,14 @@
 
-.left-panel {
-    #left-panel-history {
-        height: 100%;
+.side-panel {
+    .content-box {
+        border-radius: @border-radius-toolbar-ie;
+        border-radius: @border-radius-toolbar;
+        box-shadow: @shadow-side-panel-ie;
+        box-shadow: @shadow-side-panel;
+        background: @background-toolbar-ie;
+        background: @background-toolbar;
+        position: relative;
+        overflow: hidden;
     }
 }
 
@@ -13,8 +20,8 @@
     top: 0;
     position: absolute;
     z-index: @zindex-dropdown - 5;
-    background-color: @background-toolbar-ie;
-    background-color: @background-toolbar;
+    background-color: @background-pane-ie;
+    background-color: @background-pane;
     overflow: hidden;
 
     .rtl & {
@@ -38,6 +45,15 @@
     -o-transform: rotate(180deg);
     transform: rotate(180deg);
     cursor: default;
+    .rtl & {
+        right: 0;
+        left: auto;
+        -moz-transform: rotate(0);
+        -ms-transform: rotate(0);
+        -webkit-transform: rotate(0);
+        -o-transform: rotate(0);
+        transform: rotate(0);
+    }
 }
 
 #search-results {

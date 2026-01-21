@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,13 +32,13 @@
 /**
  *  RightMenu.js
  *
- *  Created by Julia Radzhabova on 4/10/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/10/14
  *
  */
 
 var SCALE_MIN = 40;
 var MENU_SCALE_PART = 260;
+var MENU_BASE_WIDTH = 220;
 
 define([
     'text!presentationeditor/main/app/template/RightMenu.template',
@@ -57,7 +57,8 @@ define([
     'presentationeditor/main/app/view/SlideSettings',
     'presentationeditor/main/app/view/TextArtSettings',
     'presentationeditor/main/app/view/SignatureSettings',
-    'common/main/lib/component/Scroller'
+    'common/main/lib/component/Scroller',
+    'common/main/lib/component/ListView',
 ], function (menuTemplate, $, _, Backbone) {
     'use strict';
 
@@ -156,13 +157,23 @@ define([
 
             this.trigger('render:before', this);
 
-            this.defaultHideRightMenu = mode.customization && !!mode.customization.hideRightMenu;
+            this.defaultHideRightMenu = !(mode.customization && (mode.customization.hideRightMenu===false));
             var open = !Common.localStorage.getBool("pe-hide-right-settings", this.defaultHideRightMenu);
             Common.Utils.InternalSettings.set("pe-hide-right-settings", !open);
-            el.css('width', ((open) ? MENU_SCALE_PART : SCALE_MIN) + 'px');
-            el.show();
 
-            el.html(this.template({}));
+            Common.NotificationCenter.on('app:repaint', function() {
+                el.css('width', ((open) ? MENU_SCALE_PART : SCALE_MIN) + 'px');
+            });
+
+            Common.NotificationCenter.on('uitheme:changed', _.bind(function() {
+                this.updateWidth();
+                Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+            }, this));
+
+            el.html(this.template({scope: this}));
+
+            this.updateWidth();
+            el.show();
 
             this.btnMoreContainer = $('#slot-right-menu-more');
             Common.UI.SideMenu.prototype.render.call(this);
@@ -211,14 +222,14 @@ define([
 
             if (_.isUndefined(this.scroller)) {
                 this.scroller = new Common.UI.Scroller({
-                    el: $(this.el).find('.right-panel'),
+                    el: $(this.el).find('.right-panel > .content-box'),
                     suppressScrollX: true,
                     useKeyboard: false
                 });
             }
 
             if (open) {
-                $('#id-slide-settings').parent().css("display", "inline-block" );
+                $('#id-slide-settings').closest('.right-panel').css("display", "inline-block" );
                 $('#id-slide-settings').addClass("active");
             }
             
@@ -244,16 +255,22 @@ define([
         },
 
         setMode: function(mode) {
+            this.mode = mode;
             this.imageSettings && this.imageSettings.setMode(mode);
             this.shapeSettings && this.shapeSettings.setMode(mode);
             this.slideSettings && this.slideSettings.setMode(mode);
+            this.chartSettings && this.chartSettings.setMode(mode);
         },
 
         onBtnMenuClick: function(btn, e) {
-            var target_pane = $("#" + this._settings[btn.options.asctype].panel);
-            var target_pane_parent = target_pane.parent();
+            var isPlugin = btn && btn.options.type === 'plugin',
+                target_pane_parent = $(this.el).find('.right-panel'),
+                target_pane;
+            if (btn && !isPlugin) {
+                target_pane = $("#" + this._settings[btn.options.asctype].panel);
+            }
 
-            if (btn.pressed) {
+            if (btn && btn.pressed) {
                 if ( this.minimizedMode ) {
                     $(this.el).width(MENU_SCALE_PART);
                     target_pane_parent.css("display", "inline-block" );
@@ -261,13 +278,12 @@ define([
                     Common.localStorage.setItem("pe-hide-right-settings", 0);
                     Common.Utils.InternalSettings.set("pe-hide-right-settings", false);
                 }
-                target_pane_parent.find('> .active').removeClass('active');
-                target_pane.addClass("active");
+                target_pane_parent.find('.content-box > .active').removeClass('active');
+                target_pane && target_pane.addClass("active");
 
                 if (this.scroller) {
                     this.scroller.scrollTop(0);
                 }
-                this._settings[Common.Utils.documentSettingsType.Slide].isCurrent = (btn.options.asctype==Common.Utils.documentSettingsType.Slide);
             } else {
                 target_pane_parent.css("display", "none" );
                 $(this.el).width(SCALE_MIN);
@@ -276,7 +292,7 @@ define([
                 Common.Utils.InternalSettings.set("pe-hide-right-settings", true);
             }
 
-            this.fireEvent('rightmenuclick', [this, btn.options.asctype, this.minimizedMode, e]);
+            btn && !isPlugin && this.fireEvent('rightmenuclick', [this, btn.options.asctype, this.minimizedMode, e]);
         },
 
         SetActivePane: function(type, open) {
@@ -301,12 +317,18 @@ define([
         },
 
         GetActivePane: function() {
-            return (this.minimizedMode) ? null : this.$el.find(".settings-panel.active")[0].id;
+            var active = this.$el.find(".settings-panel.active");
+            return (this.minimizedMode || active.length === 0) ? null : active[0].id;
+        },
+
+        GetActivePluginPane: function() {
+            var active = this.$el.find(".plugin-panel.active");
+            return (this.minimizedMode || active.length === 0) ? null : active[0].id;
         },
 
         clearSelection: function() {
             var target_pane = $(".right-panel");
-            target_pane.find('> .active').removeClass('active');
+            target_pane.find('.content-box > .active').removeClass('active');
             this._settings.forEach(function(item){
                 if (item.btn.isActive())
                     item.btn.toggle(false, true);
@@ -329,6 +351,18 @@ define([
             Common.UI.SideMenu.prototype.setButtons.apply(this, [allButtons]);
         },
 
+        insertPanel: function ($panel) {
+            this.$el.find('.side-panel .content-box').append($panel);
+        },
+
+        updateWidth: function() {
+            var pane = $(this.el).find('.right-panel'),
+                paddings = parseInt(pane.css('padding-left')) + parseInt(pane.css('padding-right'));
+            pane.css('width', MENU_BASE_WIDTH + paddings + 'px');
+            MENU_SCALE_PART = SCALE_MIN + MENU_BASE_WIDTH + paddings;
+            this.$el.css('width', (!Common.Utils.InternalSettings.get("pe-hide-right-settings") ? MENU_SCALE_PART : SCALE_MIN) + 'px');
+        },
+
         txtParagraphSettings:       'Text Settings',
         txtImageSettings:           'Image Settings',
         txtTableSettings:           'Table Settings',
@@ -336,6 +370,7 @@ define([
         txtTextArtSettings:         'Text Art Settings',
         txtSlideSettings:           'Slide Settings',
         txtChartSettings:           'Chart Settings',
-        txtSignatureSettings:       'Signature Settings'
+        txtSignatureSettings:       'Signature Settings',
+        ariaRightMenu:              'Right menu'
     }, PE.Views.RightMenu || {}));
 });

@@ -43,6 +43,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
         Common.Notifications.on('toolbar:activatecontrols', activateControls);
         Common.Notifications.on('toolbar:deactivateeditcontrols', deactivateEditControls);
         Common.Notifications.on('goback', goBack);
+        Common.Notifications.on('close', onClose);
         Common.Notifications.on('sheet:active', onApiActiveSheetChanged);
 
         if (isDisconnected) {
@@ -55,6 +56,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
             Common.Notifications.off('toolbar:activatecontrols', activateControls);
             Common.Notifications.off('toolbar:deactivateeditcontrols', deactivateEditControls);
             Common.Notifications.off('goback', goBack);
+            Common.Notifications.off('close', onClose);
             Common.Notifications.off('sheet:active', onApiActiveSheetChanged);
         }
     });
@@ -63,10 +65,11 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
     const [isShowBack, setShowBack] = useState(appOptions.canBackToFolder);
     const loadConfig = (data) => {
         if (data && data.config && data.config.canBackToFolder !== false &&
-            data.config.customization && data.config.customization.goback &&
-            (data.config.customization.goback.url || data.config.customization.goback.requestClose && data.config.canRequestClose))
-        {
-            setShowBack(true);
+            data.config.customization && data.config.customization.goback) {
+            const canback = data.config.customization.close === undefined ?
+                data.config.customization.goback.url || data.config.customization.goback.requestClose && data.config.canRequestClose :
+                data.config.customization.goback.url && !data.config.customization.goback.requestClose;
+            canback && setShowBack(true);
         }
     };
 
@@ -115,6 +118,10 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
                 parent.location.href = href;
             }
         }
+    }
+
+    const onClose = () => {
+        onRequestClose();
     }
 
     const onUndo = () => {
@@ -206,7 +213,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
             ],
             on: {
                 opened: () => {
-                    const nameDoc = docTitle.split('.')[0];
+                    const nameDoc = docTitle.slice(0, docTitle.lastIndexOf("."));
                     const titleField = document.querySelector('#modal-title');
                     const btnChangeTitle = document.querySelector('.btn-change-title');
 
@@ -266,10 +273,27 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
         }
     }
 
+    const forceDesktopMode = () => {
+        f7.dialog.create({
+            text: t('View.Settings.textRestartApplication'),
+            title: t('Toolbar.textSwitchToDesktop'),
+            buttons: [
+                {
+                    text: t('View.Settings.textCancel')
+                },
+                {
+                    text: t('Toolbar.btnRestartNow'),
+                    onClick: () => Common.Gateway.switchEditorType('desktop', true),
+                }
+            ]}
+        ).open();
+    }
+
     return (
         <ToolbarView 
             openOptions={props.openOptions}
             isEdit={appOptions.isEdit}
+            isDrawMode={appOptions.isDrawMode}
             docTitle={docTitle}
             isShowBack={isShowBack}
             isCanUndo={isCanUndo}
@@ -292,6 +316,8 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeSpreadsheetIn
             closeHistory={closeHistory}
             isOpenModal={props.isOpenModal}
             changeTitleHandler={changeTitleHandler}
+            forceDesktopMode={forceDesktopMode}
+            isHiddenFileName={appOptions.config?.customization?.toolbarHideFileName ?? false}
         />
     )
 }));

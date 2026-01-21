@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,16 +33,13 @@
  *
  *  NameManagerDlg.js
  *
- *  Created by Julia.Radzhabova on 01.06.15
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 01.06.15
  *
  */
 
-define([  'text!spreadsheeteditor/main/app/template/NameManagerDlg.template',
+define([
+    'text!spreadsheeteditor/main/app/template/NameManagerDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/InputField'
 ], function (contentTemplate) {
     'use strict';
 
@@ -61,7 +58,7 @@ define([  'text!spreadsheeteditor/main/app/template/NameManagerDlg.template',
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                contentStyle: 'padding: 0;',
+                contentStyle: 'padding: 5px 0 0;',
                 contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
@@ -177,6 +174,11 @@ define([  'text!spreadsheeteditor/main/app/template/NameManagerDlg.template',
             this.refreshRangeList(this.ranges, 0);
             this.api.asc_registerCallback('asc_onLockDefNameManager', this.wrapEvents.onLockDefNameManager);
             this.api.asc_registerCallback('asc_onRefreshDefNameList', this.wrapEvents.onRefreshDefNameList);
+            this.initListHeaders();
+        },
+
+        initListHeaders: function() {
+            this.rangeList.setHeaderWidth(0, parseInt(Common.UI.Themes.getThemeProps('small-btn-size')) + 146/*first column*/ + 5/*padding*/);
         },
 
         onRefreshDefNameList: function() {
@@ -287,7 +289,7 @@ define([  'text!spreadsheeteditor/main/app/template/NameManagerDlg.template',
                 return;
             }
             var me = this,
-                xy = me.$window.offset(),
+                xy = Common.Utils.getOffset(me.$window),
                 rec = this.rangeList.getSelectedRec(),
                 idx = _.indexOf(this.rangeList.store.models, rec),
                 oldname = (isEdit && rec) ? new Asc.asc_CDefName(rec.get('name'), rec.get('range'), rec.get('scope'), rec.get('type'), undefined, undefined, undefined, true) : null;

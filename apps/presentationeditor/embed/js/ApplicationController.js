@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -41,9 +41,11 @@ PE.ApplicationController = new(function(){
         created = false,
         currentPage = 0,
         ttOffset = [5, -10],
-        labelDocName;
+        labelDocName,
+        requireUserAction = true;
 
-    var LoadingDocument = -256;
+    var LoadingDocument = -256,
+          WarningShown = false;
 
     // Initialize analytics
     // -------------------------
@@ -86,8 +88,22 @@ PE.ApplicationController = new(function(){
             $('#box-preview').addClass('top');
         }
 
-        config.canBackToFolder = (config.canBackToFolder!==false) && config.customization && config.customization.goback &&
-                                (config.customization.goback.url || config.customization.goback.requestClose && config.canRequestClose);
+        config.mode = 'view'; // always view for embedded
+        config.canCloseEditor = false;
+        var _canback = false;
+        if (typeof config.customization === 'object') {
+            if (typeof config.customization.goback == 'object' && config.canBackToFolder!==false) {
+                _canback = config.customization.close===undefined ?
+                    config.customization.goback.url || config.customization.goback.requestClose && config.canRequestClose :
+                    config.customization.goback.url && !config.customization.goback.requestClose;
+
+                if (config.customization.goback.requestClose)
+                    console.log("Obsolete: The 'requestClose' parameter of the 'customization.goback' section is deprecated. Please use 'close' parameter in the 'customization' section instead.");
+            }
+            if (config.customization.close && typeof config.customization.close === 'object')
+                config.canCloseEditor  = (config.customization.close.visible!==false) && config.canRequestClose && !config.isDesktopApp;
+        }
+        config.canBackToFolder = !!_canback;
     }
 
     function loadDocument(data) {
@@ -125,6 +141,8 @@ PE.ApplicationController = new(function(){
             docInfo.put_EncryptedInfo(config.encryptionKeys);
             docInfo.put_Lang(config.lang);
             docInfo.put_Mode(config.mode);
+            docInfo.put_Wopi(config.wopi);
+            config.shardkey && docInfo.put_Shardkey(config.shardkey);
 
             var enable = !config.customization || (config.customization.macros!==false);
             docInfo.asc_putIsEnabledMacroses(!!enable);
@@ -199,6 +217,11 @@ PE.ApplicationController = new(function(){
     }
 
     function onDocMouseMove(data) {
+        if (WarningShown) {
+            if ($tooltip) {
+                $tooltip.tooltip('hide');
+            }
+        }
         if (data) {
             if (data.get_Type() == 1) { // hyperlink
                 me.isHideBodyTip = false;
@@ -217,6 +240,7 @@ PE.ApplicationController = new(function(){
 
                         $tooltip.find('.tooltip-arrow').css({left: 10});
                     });
+                    $ttEl.data('bs.tooltip').options.title = me.txtPressLink;
                 }
 
                 if ( !$tooltip ) {
@@ -254,6 +278,9 @@ PE.ApplicationController = new(function(){
     function onDocumentContentReady() {
         api.ShowThumbnails(false);
         api.asc_DeleteVerticalScroll();
+        config.customization && config.customization.slidePlayerBackground && api.asc_setDemoBackgroundColor(config.customization.slidePlayerBackground);
+
+        api.asc_setViewerTargetType(config.customization && config.customization.pointerMode==='hand' ? 'hand' : 'select');
 
         if (!embedConfig.autostart || embedConfig.autostart == 'player') {
             api.SetDemonstrationModeOnly();
@@ -294,6 +321,10 @@ PE.ApplicationController = new(function(){
             text && (typeof text == 'string') && $('#idt-close .caption').text(text);
         }
 
+        if (config.canCloseEditor) {
+            $('#id-btn-close-editor').removeClass('hidden');
+        }
+
         if (itemsCount < 7) {
             $(dividers[0]).hide();
             $(dividers[1]).hide();
@@ -319,6 +350,8 @@ PE.ApplicationController = new(function(){
             embed: '#idt-embed'
         });
 
+        common.controller.Shortcuts.setApi(api);
+
         api.asc_registerCallback('asc_onMouseMoveStart',        onDocMouseMoveStart);
         api.asc_registerCallback('asc_onMouseMoveEnd',          onDocMouseMoveEnd);
         api.asc_registerCallback('asc_onMouseMove',             onDocMouseMove);
@@ -326,7 +359,7 @@ PE.ApplicationController = new(function(){
         api.asc_registerCallback('asc_onDownloadUrl',           onDownloadUrl);
         api.asc_registerCallback('asc_onPrint',                 onPrint);
         api.asc_registerCallback('asc_onPrintUrl',              onPrintUrl);
-        api.asc_registerCallback('asc_onHyperlinkClick',        common.utils.openLink);
+        api.asc_registerCallback('asc_onHyperlinkClick',        onHyperlinkClick);
         api.asc_registerCallback('asc_onStartAction',           onLongActionBegin);
         api.asc_registerCallback('asc_onEndAction',             onLongActionEnd);
 
@@ -371,6 +404,10 @@ PE.ApplicationController = new(function(){
                     }
                 }
             });
+
+        $('#id-btn-close-editor').on('click', function(){
+            config.canRequestClose && Common.Gateway.requestClose();
+        });
 
         PE.ApplicationView.tools.get('#idt-search')
             .on('click', function(){
@@ -486,6 +523,8 @@ PE.ApplicationController = new(function(){
 
         $('#editor_sdk').on('click', function(e) {
             if ( e.target.localName == 'canvas' ) {
+                if (e.target.getAttribute && e.target.getAttribute("oo_no_focused"))
+                    return;
                 e.currentTarget.focus();
             }
         });
@@ -493,16 +532,21 @@ PE.ApplicationController = new(function(){
         $('#btn-play').on('click', onPlayStart);
         Common.Gateway.documentReady();
         Common.Analytics.trackEvent('Load', 'Complete');
+        requireUserAction = false;
     }
 
     function onEditorPermissions(params) {
         var licType = params.asc_getLicenseType();
         if (Asc.c_oLicenseResult.Expired === licType || Asc.c_oLicenseResult.Error === licType || Asc.c_oLicenseResult.ExpiredTrial === licType ||
             Asc.c_oLicenseResult.NotBefore === licType || Asc.c_oLicenseResult.ExpiredLimited === licType) {
-            $('#id-critical-error-title').text(Asc.c_oLicenseResult.NotBefore === licType ? me.titleLicenseNotActive : me.titleLicenseExp);
-            $('#id-critical-error-message').html(Asc.c_oLicenseResult.NotBefore === licType ? me.warnLicenseBefore : me.warnLicenseExp);
-            $('#id-critical-error-close').parent().remove();
-            $('#id-critical-error-dialog').css('z-index', 20002).modal({backdrop: 'static', keyboard: false, show: true});
+                common.controller.modals.showWarning({
+                    title: Asc.c_oLicenseResult.NotBefore === licType ? me.titleLicenseNotActive : me.titleLicenseExp,
+                    message: Asc.c_oLicenseResult.NotBefore === licType ? me.warnLicenseBefore : me.warnLicenseExp,
+                    buttons: []
+                });
+        
+                $('#dlg-warning').css('z-index', 20002);
+                $('#dlg-warning button.close, #dlg-warning .modal-footer').remove();
             return;
         }
 
@@ -510,13 +554,13 @@ PE.ApplicationController = new(function(){
         appOptions.canBranding && setBranding(config.customization);
 
         var $parent = labelDocName.parent();
-        var _left_width = $parent.position().left,
+        var _left_width = common.utils.getPosition($parent).left,
             _right_width = $parent.next().outerWidth();
 
         if ( _left_width < _right_width )
-            $parent.css('padding-left', _right_width - _left_width);
+            $parent.css('padding-left', parseFloat($parent.css('padding-left')) + _right_width - _left_width);
         else
-            $parent.css('padding-right', _left_width - _right_width);
+            $parent.css('padding-right', parseFloat($parent.css('padding-right')) + _left_width - _right_width);
 
         onLongActionBegin(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
         api.asc_setViewMode(true);
@@ -533,7 +577,7 @@ PE.ApplicationController = new(function(){
     function onPlayStart(e) {
         if ( !isplaymode ) {
             $('#box-preview').show();
-            api.StartDemonstration('id-preview', currentPage);
+            api.StartDemonstrationFromCurrentSlide('id-preview');
         } else {
             isplaymode == 'play' ?
                 api.DemonstrationPause() : api.DemonstrationPlay();
@@ -568,16 +612,49 @@ PE.ApplicationController = new(function(){
             else $('#loading-mask').addClass("none-animation");
             onLongActionEnd(Asc.c_oAscAsyncActionType['BlockInteraction'], LoadingDocument);
         }
+        if (requireUserAction) {
+            Common.Gateway.userActionRequired();
+            requireUserAction = false;
+        }
+    }
+
+    function onHyperlinkClick(url) {
+        var type = api.asc_getUrlType(url);
+        if (type===AscCommon.c_oAscUrlType.Http || type===AscCommon.c_oAscUrlType.Email) 
+            window.open(url, '_blank');  
+        else {
+            WarningShown = true; 
+            common.controller.modals.showWarning({
+                    title: me.notcriticalErrorTitle,
+                    message: me.txtOpenWarning.replace('%1', url || ''),
+                    buttons: [me.txtNo, me.txtYes],
+                    primary: me.txtNo,
+                    callback: function (btn) {
+                        WarningShown = false; 
+                        if (btn === me.txtYes) {
+                            window.open(url);
+                        }
+                    },
+                    closecallback: function() {
+                        WarningShown = false;
+                    }
+            }); 
+        }    
     }
 
     function onError(id, level, errData) {
         if (id == Asc.c_oAscError.ID.LoadingScriptError) {
-            $('#id-critical-error-title').text(me.criticalErrorTitle);
-            $('#id-critical-error-message').text(me.scriptLoadError);
-            $('#id-critical-error-close').text(me.txtClose).off().on('click', function(){
-                window.location.reload();
+            common.controller.modals.showWarning({
+                title: me.criticalErrorTitle,
+                message: me.scriptLoadError,
+                buttons: [me.txtClose],
+                callback: function(btn) {
+                    window.location.reload();
+                },
+                closecallback: function() {
+                    window.location.reload();
+                }
             });
-            $('#id-critical-error-dialog').css('z-index', 20002).modal('show');
             return;
         }
 
@@ -641,6 +718,10 @@ PE.ApplicationController = new(function(){
                 message = me.errorTokenExpire;
                 break;
 
+            case Asc.c_oAscError.ID.VKeyEncrypt:
+                message= me.errorToken;
+                break;
+
             case Asc.c_oAscError.ID.ConvertationOpenFormat:
                 if (errData === 'pdf')
                     message = me.errorInconsistentExtPdf.replace('%1', docConfig.fileType || '');
@@ -657,33 +738,37 @@ PE.ApplicationController = new(function(){
             case Asc.c_oAscError.ID.SessionToken: // don't show error message
                 return;
 
-            default:
-                message = me.errorDefaultMessage.replace('%1', id);
+            case Asc.c_oAscError.ID.EditingError:
+                message = me.errorEditingDownloadas;
                 break;
+
+            default:
+                // message = me.errorDefaultMessage.replace('%1', id);
+                // break;
+                return;
         }
+
+        common.controller.modals.showWarning({
+            title: (level == Asc.c_oAscError.Level.Critical) ? me.criticalErrorTitle : me.notcriticalErrorTitle,
+            message: message,
+            buttons: [me.txtClose],
+            callback: function(btn) {
+                if (level == Asc.c_oAscError.Level.Critical) {
+                    window.location.reload();
+                } 
+            },
+            closecallback: function() {
+                if (level == Asc.c_oAscError.Level.Critical) {
+                    window.location.reload();
+                }
+            }
+        });
 
         if (level == Asc.c_oAscError.Level.Critical) {
-
-            // report only critical errors
             Common.Gateway.reportError(id, message);
-
-            $('#id-critical-error-title').text(me.criticalErrorTitle);
-            $('#id-critical-error-message').html(message);
-            $('#id-critical-error-close').text(me.txtClose).off().on('click', function(){
-                window.location.reload();
-            });
-        }
-        else {
+        } else {
             Common.Gateway.reportWarning(id, message);
-
-            $('#id-critical-error-title').text(me.notcriticalErrorTitle);
-            $('#id-critical-error-message').html(message);
-            $('#id-critical-error-close').text(me.txtClose).off().on('click', function(){
-                $('#id-critical-error-dialog').modal('hide');
-            });
         }
-
-        $('#id-critical-error-dialog').modal('show');
 
         Common.Analytics.trackEvent('Internal Error', id.toString());
     }
@@ -703,7 +788,7 @@ PE.ApplicationController = new(function(){
         if (data.type == 'mouseup') {
             var e = document.getElementById('editor_sdk');
             if (e) {
-                var r = e.getBoundingClientRect();
+                var r = common.utils.getBoundingClientRect(e);
                 api.OnMouseUp(
                     data.x - r.left,
                     data.y - r.top
@@ -721,7 +806,11 @@ PE.ApplicationController = new(function(){
             Common.Gateway.reportError(Asc.c_oAscError.ID.AccessDeny, me.errorAccessDeny);
             return;
         }
-        if (api) api.asc_DownloadAs(new Asc.asc_CDownloadOptions(Asc.c_oAscFileType.PPTX, true));
+        if (api) {
+            var options = new Asc.asc_CDownloadOptions(Asc.c_oAscFileType.PPTX, true);
+            options.asc_setIsSaveAs(true);
+            api.asc_DownloadAs(options);
+        }
     }
 
     function onRunAutostartMacroses() {
@@ -736,8 +825,13 @@ PE.ApplicationController = new(function(){
     function setBranding(value) {
         if ( value && value.logo) {
             var logo = $('#header-logo');
+            if (value.logo.visible===false) {
+                logo.addClass('hidden');
+                return;
+            }
+
             if (value.logo.image || value.logo.imageEmbedded) {
-                logo.html('<img src="'+(value.logo.image || value.logo.imageEmbedded)+'" style="max-width:100px; max-height:20px;"/>');
+                logo.html('<img src="'+(value.logo.image || value.logo.imageEmbedded)+'" style="max-width:300px; max-height:20px;"/>');
                 logo.css({'background-image': 'none', width: 'auto', height: 'auto'});
 
                 value.logo.imageEmbedded && console.log("Obsolete: The 'imageEmbedded' parameter of the 'customization.logo' section is deprecated. Please use 'image' parameter instead.");
@@ -775,7 +869,8 @@ PE.ApplicationController = new(function(){
         
         api = new Asc.asc_docs_api({
             'id-view'  : 'editor_sdk',
-            'embedded' : true
+            'embedded' : true,
+            'isRtlInterface': window.isrtl
         });
 
         if (api){
@@ -835,6 +930,12 @@ PE.ApplicationController = new(function(){
         titleLicenseExp: 'License expired',
         titleLicenseNotActive: 'License not active',
         warnLicenseBefore: 'License not active. Please contact your administrator.',
-        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.'
+        warnLicenseExp: 'Your license has expired. Please update your license and refresh the page.',
+        errorEditingDownloadas: 'An error occurred during the work with the document.<br>Use the \'Download as...\' option to save the file backup copy to your computer hard drive.',
+        errorToken: 'The document security token is not correctly formed.<br>Please contact your Document Server administrator.',
+        txtPressLink: 'Click the link to open it',
+        txtOpenWarning: 'Clicking this link can be harmful to your device and data.To protect you computer, click only those hyperlinks from trusted sources. This location may be unsafe:<br>%1<br>Are you sure you want to continue?',
+        txtYes:'Yes',
+        txtNo: 'No'
     }
 })();

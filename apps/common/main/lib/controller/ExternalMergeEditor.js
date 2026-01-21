@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  ExternalDiagramEditor.js
  *
- *  Created by Julia Radzhabova on 4/08/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/08/14
  *
  */
 
@@ -44,7 +43,6 @@ Common.Controllers = Common.Controllers || {};
 
 define([
     'core',
-    'common/main/lib/view/ExternalMergeEditor'
 ], function () { 'use strict';
     Common.Controllers.ExternalMergeEditor = Backbone.Controller.extend(_.extend((function() {
         var appLang         = '{{DEFAULT_LANG}}',
@@ -88,7 +86,7 @@ define([
         };
 
         return {
-            views: ['Common.Views.ExternalMergeEditor'],
+            views: [],
 
             initialize: function() {
                 this.addListeners({
@@ -99,6 +97,11 @@ define([
                         },this),
                         'resize': _.bind(function(o, state){
                             externalEditor && externalEditor.serviceCommand('window:resize', state == 'start');
+                        },this),
+                        'animate:before': _.bind(function(){
+                            if(!this.isAppFirstOpened) {
+                                externalEditor && externalEditor.serviceCommand('reshow');
+                            }
                         },this),
                         'show': _.bind(function(cmp){
                             var h = this.mergeEditorView.getHeight(),
@@ -135,17 +138,19 @@ define([
                     }
                 });
 
-
+                Common.NotificationCenter.on('script:loaded', _.bind(this.onPostLoadComplete, this));
             },
 
-            onLaunch: function() {
-                this.mergeEditorView = this.createView('Common.Views.ExternalMergeEditor', {handler: _.bind(this.handler, this)});
+            onLaunch: function() {},
+
+            onPostLoadComplete: function() {
+                this.views = this.getApplication().getClasseRefs('view', ['Common.Views.ExternalMergeEditor']);
+                this.mergeEditorView = this.createView('Common.Views.ExternalMergeEditor',{handler: this.handler.bind(this)});
             },
 
             setApi: function(api) {
                 this.api = api;
                 this.api.asc_registerCallback('asc_onCloseMergeEditor', _.bind(this.onMergeEditingDisabled, this));
-                this.api.asc_registerCallback('asc_sendFromGeneralToFrameEditor', _.bind(this.onSendFromGeneralToFrameEditor, this));
                 return this;
             },
 
@@ -258,10 +263,6 @@ define([
                 if (data.type == 'mouseup' && this.isExternalEditorVisible) {
                     externalEditor && externalEditor.serviceCommand('processmouse', data);
                 }
-            },
-
-            onSendFromGeneralToFrameEditor: function(data) {
-                externalEditor && externalEditor.serviceCommand('generalToFrameData', data);
             },
 
             warningTitle: 'Warning',

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  RightMenu.js
  *
- *  Created by Julia Radzhabova on 1/17/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 1/17/14
  *
  */
 
@@ -63,10 +62,18 @@ define([
             };
             this.addListeners({
                 'RightMenu': {
-                    'rightmenuclick': this.onRightMenuClick
+                    'rightmenuclick': this.onRightMenuClick,
+                    'button:click':  _.bind(this.onBtnCategoryClick, this)
                 },
                 'ViewTab': {
                     'rightmenu:hide': _.bind(this.onRightMenuHide, this)
+                },
+                'Common.Views.Plugins': {
+                    'plugins:addtoright': _.bind(this.addNewPlugin, this),
+                    'pluginsright:open': _.bind(this.openPlugin, this),
+                    'pluginsright:close': _.bind(this.closePlugin, this),
+                    'pluginsright:hide': _.bind(this.onHidePlugins, this),
+                    'pluginsright:updateicons': _.bind(this.updatePluginButtonsIcons, this)
                 }
             });
 
@@ -170,7 +177,8 @@ define([
             var isChart = false,
                 isShape = false,
                 isSmartArtInternal = false,
-                isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly;
+                isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly,
+                unprotectedRegion = {};
 
             var control_props = this.api.asc_IsContentControl() ? this.api.asc_GetContentControlProperties() : null,
                 is_form = control_props && control_props.get_FormPr(),
@@ -179,14 +187,21 @@ define([
             {
                 var content_locked = false;
                 var eltype = SelectedObjects[i].get_ObjectType(),
+                    value = SelectedObjects[i].get_ObjectValue(),
                     settingsType = this.getDocumentSettingsType(eltype);
                 if (eltype === Asc.c_oAscTypeSelectElement.Math)
                     in_equation = true;
+                else if (eltype === Asc.c_oAscTypeSelectElement.UnProtectedRegion) { //(unprotected region)
+                    unprotectedRegion = {
+                        canEditText: value.get_canEditText(),
+                        canEditPara: value.get_canEditPara(),
+                        canInsObject: value.get_canInsObject()
+                    };
+                }
 
                 if (settingsType===undefined || settingsType>=this._settings.length || this._settings[settingsType]===undefined)
                     continue;
 
-                var value = SelectedObjects[i].get_ObjectValue();
                 if (settingsType == Common.Utils.documentSettingsType.Image) {
                     var lock_type = (control_props) ? control_props.get_Lock() : Asc.c_oAscSdtLockType.Unlocked;
                     content_locked = lock_type==Asc.c_oAscSdtLockType.SdtContentLocked || lock_type==Asc.c_oAscSdtLockType.ContentLocked;
@@ -211,13 +226,19 @@ define([
                     this._settings[settingsType].panel.isSmartArtInternal = isSmartArtInternal;
                     can_add_table = value.get_CanAddTable();
                     control_lock = control_lock || value.get_Locked();
+                    content_locked = !value.can_EditBlockContentControl();
                 }
                 this._settings[settingsType].props = value;
                 this._settings[settingsType].hidden = 0;
-                this._settings[settingsType].locked = value.get_Locked() || content_locked || isProtected;
-                if (!this._settings[Common.Utils.documentSettingsType.MailMerge].locked) // lock MailMerge-InsertField, если хотя бы один объект locked
+                if (settingsType == Common.Utils.documentSettingsType.Paragraph) { // unlock paraphaph in unprotected regions
+                    this._settings[settingsType].locked = value.get_Locked() || content_locked || this._state.docProtection.isReadOnly && !unprotectedRegion.canEditPara ||
+                                                          this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly && !unprotectedRegion.canEditPara;
+                } else
+                    this._settings[settingsType].locked = value.get_Locked() || content_locked || isProtected;
+
+                if (!this._settings[Common.Utils.documentSettingsType.MailMerge].locked) // lock MailMerge-InsertField, if at least one object is locked
                     this._settings[Common.Utils.documentSettingsType.MailMerge].locked = value.get_Locked() || isProtected;
-                if (!this._settings[Common.Utils.documentSettingsType.Signature].locked) // lock Signature, если хотя бы один объект locked
+                if (!this._settings[Common.Utils.documentSettingsType.Signature].locked) // lock Signature, if at least one object is locked
                     this._settings[Common.Utils.documentSettingsType.Signature].locked = value.get_Locked();
             }
 
@@ -229,7 +250,7 @@ define([
                 var spectype = control_props.get_SpecificType();
                 if (spectype==Asc.c_oAscContentControlSpecificType.CheckBox || spectype==Asc.c_oAscContentControlSpecificType.Picture || spectype==Asc.c_oAscContentControlSpecificType.Complex ||
                     spectype==Asc.c_oAscContentControlSpecificType.ComboBox || spectype==Asc.c_oAscContentControlSpecificType.DropDownList || spectype==Asc.c_oAscContentControlSpecificType.None ||
-                    spectype==Asc.c_oAscContentControlSpecificType.DateTime) {
+                    spectype==Asc.c_oAscContentControlSpecificType.DateTime || spectype==Asc.c_oAscContentControlSpecificType.Signature) {
                     settingsType = Common.Utils.documentSettingsType.Form;
                     this._settings[settingsType].props = control_props;
                     this._settings[settingsType].locked = control_lock || isProtected;
@@ -239,7 +260,7 @@ define([
                 }
             }
 
-            if ( this._settings[Common.Utils.documentSettingsType.Header].locked ) { // если находимся в locked header/footer, то считаем, что все элементы в нем тоже недоступны
+            if ( this._settings[Common.Utils.documentSettingsType.Header].locked ) { // all elements are locked if header/footer is locked
                 for (i=0; i<this._settings.length; i++)  {
                     if (this._settings[i])
                         this._settings[i].locked = true;
@@ -310,7 +331,7 @@ define([
                 else if (lastactive>=0 && currentactive<0) active = lastactive;
                 else if (currentactive>=0) active = currentactive;
                 else if (forceSignature && !this._settings[Common.Utils.documentSettingsType.Signature].hidden) active = Common.Utils.documentSettingsType.Signature;
-                else if (!this._settings[Common.Utils.documentSettingsType.MailMerge].hidden) active = Common.Utils.documentSettingsType.MailMerge;
+                else if (!this.rightmenu.GetActivePluginPane() && !this._settings[Common.Utils.documentSettingsType.MailMerge].hidden) active = Common.Utils.documentSettingsType.MailMerge;
 
                 if (active == undefined && open && lastactive>=0)
                     active = lastactive;
@@ -552,9 +573,62 @@ define([
                 !status && Common.NotificationCenter.trigger('forms:close-help', 'key');
                 !status && Common.NotificationCenter.trigger('forms:close-help', 'group-key');
                 !status && Common.NotificationCenter.trigger('forms:close-help', 'settings');
+
+                !view && this.rightmenu.fireEvent('view:hide', [this, !status]);
             }
             Common.NotificationCenter.trigger('layout:changed', 'main');
             Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
-        }
+        },
+
+        onRightMenuOpen: function(type) {
+            if (this._settings[type]===undefined || this._settings[type].hidden || this._settings[type].btn.isDisabled() || this._settings[type].panelId===this.rightmenu.GetActivePane()) return;
+
+            this.tryToShowRightMenu();
+            this.rightmenu.SetActivePane(type, true);
+            this._settings[type].panel.ChangeSettings.call(this._settings[type].panel, this._settings[type].props);
+            this.rightmenu.updateScroller();
+        },
+
+        tryToShowRightMenu: function() {
+            if (this.rightmenu && this.rightmenu.mode && (!this.rightmenu.mode.canBrandingExt || !this.rightmenu.mode.customization || this.rightmenu.mode.customization.rightMenu !== false) && Common.UI.LayoutManager.isElementVisible('rightMenu'))
+                this.onRightMenuHide(null, true);
+        },
+
+        addNewPlugin: function (button, $button, $panel) {
+            this.rightmenu.insertButton(button, $button);
+            this.rightmenu.insertPanel($panel);
+        },
+
+        openPlugin: function (guid) {
+            this.rightmenu.openPlugin(guid);
+        },
+
+        closePlugin: function (guid) {
+            this.rightmenu.closePlugin(guid);
+            this.rightmenu.onBtnMenuClick();
+            Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+            this.rightmenu.fireEvent('editcomplete', this.rightmenu);
+        },
+
+        onHidePlugins: function() {
+            Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+        },
+
+        updatePluginButtonsIcons: function (icons) {
+            this.rightmenu.updatePluginButtonsIcons(icons);
+        },
+
+        onBtnCategoryClick: function (btn) {
+            if (btn.options.type === 'plugin' && !btn.isDisabled()) {
+                this.rightmenu.onBtnMenuClick(btn);
+                if (btn.pressed) {
+                    this.rightmenu.fireEvent('plugins:showpanel', [btn.options.value]); // show plugin panel
+                } else {
+                    this.rightmenu.fireEvent('plugins:hidepanel', [btn.options.value]);
+                }
+                Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+                this.rightmenu.fireEvent('editcomplete', this.rightmenu);
+            }
+        },
     });
 });

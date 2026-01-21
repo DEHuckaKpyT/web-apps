@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,11 @@
 /**
  *  GoalSeekDlg.js
  *
- *  Created by Julia Svinareva on 5.10.2023
- *  Copyright (c) 2023 Ascensio System SIA. All rights reserved.
+ *  Created on 5.10.2023
  *
  */
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/view/AdvancedSettingsWindow'
+    'common/main/lib/view/AdvancedSettingsWindow',
 ], function () { 'use strict';
 
     SSE.Views.GoalSeekStatusDlg = Common.Views.AdvancedSettingsWindow.extend(_.extend({
@@ -55,7 +52,7 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                contentStyle: 'padding: 0 10px;',
+                contentStyle: 'padding: 10px 10px 0;',
                 contentTemplate: _.template([
                     '<div class="settings-panel active">',
                         '<div class="inner-content">',

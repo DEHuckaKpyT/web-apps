@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState } from 'react';
-import { CSSTransition } from 'react-transition-group';
+import { CSSTransition } from '../../../../common/mobile/lib/component/CSSTransition'
 import { f7, Icon, Page, View, Navbar, Subnavbar } from 'framework7-react';
 import { observer, inject } from "mobx-react";
 import { useTranslation } from 'react-i18next';
@@ -17,10 +17,14 @@ import Snackbar from '../components/Snackbar/Snackbar';
 import { Themes } from '../../../../common/mobile/lib/controller/Themes';
 import EditView from '../view/edit/Edit';
 import VersionHistoryController from '../../../../common/mobile/lib/controller/VersionHistory';
+import {DrawController} from "../../../../common/mobile/lib/controller/Draw";
+import SvgIcon from '@common/lib/component/SvgIcon';
+import IconEditMode from '@icons/icon-edit-mode.svg';
+
 
 export const MainContext = createContext();
 
-const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeVersionHistory', 'storeToolbarSettings')(observer(props => {
+const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeVersionHistory', 'storeToolbarSettings', 'storeThemes')(observer(props => {
     const { t } = useTranslation();
     const [state, setState] = useState({
         editOptionsVisible: false,
@@ -36,39 +40,74 @@ const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeV
         isOpenModal: false
     });
     const appOptions = props.storeAppOptions;
+    const storeThemes = props.storeThemes;
+    const colorTheme = storeThemes.colorTheme;
     const storeVersionHistory = props.storeVersionHistory;
     const isVersionHistoryMode = storeVersionHistory.isVersionHistoryMode;
     const storeDocumentInfo = props.storeDocumentInfo;
-    const docExt = storeDocumentInfo.dataDoc ? storeDocumentInfo.dataDoc.fileType : '';
+    const dataDoc = storeDocumentInfo.dataDoc;
+    const docExt = dataDoc?.fileType || '';
     const isAvailableExt = docExt && docExt !== 'djvu' && docExt !== 'pdf' && docExt !== 'xps';
     const storeToolbarSettings = props.storeToolbarSettings;
-    const isDisconnected = props.users.isDisconnected;
-    const isViewer = appOptions.isViewer;
-    const isEdit = appOptions.isEdit;
-    const isMobileView = appOptions.isMobileView;
-    const disabledControls = storeToolbarSettings.disabledControls;
-    const disabledSettings = storeToolbarSettings.disabledSettings;
-    const isProtected = appOptions.isProtected;
-    const typeProtection = appOptions.typeProtection;
-    const isFabShow = isViewer && !disabledSettings && !disabledControls && !isDisconnected && isAvailableExt && isEdit && (!isProtected || typeProtection === Asc.c_oAscEDocProtect.TrackedChanges);
+    const isFabShow = appOptions.isViewer && !storeToolbarSettings.disabledSettings && !storeToolbarSettings.disabledControls &&
+        !props.users.isDisconnected && isAvailableExt && appOptions.isEdit &&
+        (!appOptions.isProtected || appOptions.typeProtection === Asc.c_oAscEDocProtect.TrackedChanges);
     const config = appOptions.config;
-    const isShowPlaceholder = !appOptions.isDocReady && (!config.customization || !(config.customization.loaderName || config.customization.loaderLogo));
+    const { customization = {} } = config;
+    const isShowPlaceholder = !appOptions.isDocReady && (!customization || !(customization.loaderName || customization.loaderLogo));
 
-    let isHideLogo = true,
-        isCustomization = true,
-        isBranding = true;
+    let isBranding = true,
+        isHideLogo = true,
+        customLogoImage = '',
+        customLogoUrl = '';
 
-    if(!appOptions.isDisconnected && config?.customization) {
-        isCustomization = !!(config.customization.loaderName || config.customization.loaderLogo);
+    if(!appOptions.isDisconnected && appOptions.isDocReady) {
+        const { logo } = customization;
         isBranding = appOptions.canBranding || appOptions.canBrandingExt;
-        isHideLogo = isCustomization && isBranding; 
+        
+        if(logo && isBranding) {
+            isHideLogo = logo.visible === false;
+
+            if(logo.image || logo.imageDark || logo.imageLight) {
+                customLogoImage = colorTheme.type === 'dark' ? logo.imageDark ?? logo.image ?? logo.imageLight : logo.imageLight ?? logo.image ?? logo.imageDark;
+                customLogoUrl = logo.url;
+            }
+        } else {
+            isHideLogo = false;
+        }
+    }
+
+    const touchMoveHandler = (e) => {
+        if (e.touches.length > 1 && !e.target.closest('#editor_sdk')) {
+            e.preventDefault();
+        }
+    }
+
+    const gesturePreventHandler = e => {
+        e.preventDefault();
     }
 
     useEffect(() => {
-        if($$('.skl-container').length) {
-            $$('.skl-container').remove();
+
+        document.addEventListener('touchmove', touchMoveHandler);
+
+        if (Device.ios) {
+            document.addEventListener('gesturestart', gesturePreventHandler);
+            document.addEventListener('gesturechange', gesturePreventHandler);
+            document.addEventListener('gestureend', gesturePreventHandler);
+        }
+       
+        return () => {
+            document.removeEventListener('touchmove', touchMoveHandler);
+
+            if (Device.ios) {
+                document.removeEventListener('gesturestart', gesturePreventHandler);
+                document.removeEventListener('gesturechange', gesturePreventHandler);
+                document.removeEventListener('gestureend', gesturePreventHandler);
+            }
         }
     }, []);
+
 
     const handleClickToOpenOptions = (opts, showOpts) => {
         f7.popover.close('.document-menu.modal-in', false);
@@ -214,32 +253,42 @@ const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeV
     };
 
     return (
-        <Themes>
+        <Themes fileType={docExt}>
             <MainContext.Provider value={{
                 openOptions: handleClickToOpenOptions,
                 closeOptions: handleOptionsViewClosed,
                 showPanels: state.addShowOptions,
-                isBranding
+                isBranding,
+                isViewer: appOptions.isViewer,
             }}>
                 <Page name="home" className={`editor${!isHideLogo ? ' page-with-logo' : ''}`}>
                     <Navbar id='editor-navbar' className={`main-navbar${!isHideLogo ? ' navbar-with-logo' : ''}`}>
                         {!isHideLogo &&
                             <div className="main-logo" onClick={() => {
-                                window.open(`${__PUBLISHER_URL__}`, "_blank");
+                                window.open(`${customLogoImage && customLogoUrl ? customLogoUrl : __PUBLISHER_URL__}`, "_blank");
                             }}>
-                                <Icon icon="icon-logo"></Icon>
+                                {customLogoImage ? 
+                                    <img className='custom-logo-image' src={customLogoImage} />
+                                : 
+                                    <Icon icon="icon-logo"></Icon>
+                                }
                             </div>
                         }
-                        <Subnavbar>
-                            <ToolbarController 
-                                openOptions={handleClickToOpenOptions} 
-                                closeOptions={handleOptionsViewClosed}
-                                isOpenModal={state.isOpenModal}
-                            />
-                            <Search useSuspense={false}/>
-                        </Subnavbar>
+                        {dataDoc &&
+                            <Subnavbar>
+                                <ToolbarController 
+                                    openOptions={handleClickToOpenOptions} 
+                                    closeOptions={handleOptionsViewClosed}
+                                    isOpenModal={state.isOpenModal}
+                                />
+                                <Search useSuspense={false}/>
+                            </Subnavbar>
+                        }
                     </Navbar>
                     <View id="editor_sdk"></View>
+                    <Navbar id='drawbar' style={{ display: !appOptions.isDrawMode && 'none' }}>
+                        <DrawController />
+                    </Navbar>
                     {isShowPlaceholder ?
                         <div className="doc-placeholder-container">
                             <div className="doc-placeholder">
@@ -269,7 +318,7 @@ const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeV
                     <Snackbar 
                         isShowSnackbar={state.snackbarVisible} 
                         closeCallback={() => handleOptionsViewClosed('snackbar')}
-                        message={isMobileView ? t("Toolbar.textSwitchedMobileView") : t("Toolbar.textSwitchedStandardView")} 
+                        message={appOptions.isMobileView ? t("Toolbar.textSwitchedMobileView") : t("Toolbar.textSwitchedStandardView")}
                     />
                     <SearchSettings useSuspense={false} />
                     {!state.editOptionsVisible ? null : <EditView />}
@@ -304,7 +353,7 @@ const MainPage = inject('storeDocumentInfo', 'users', 'storeAppOptions', 'storeV
                         >
                             <div className="fab fab-right-bottom" onClick={() => turnOffViewerMode()}>
                                 <a href="#">
-                                    <i className="icon icon-edit-mode"></i>
+                                    <SvgIcon symbolId={IconEditMode.id} className="icon icon-svg" />
                                 </a>
                             </div>
                         </CSSTransition>

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  SignatureSettings.js
  *
- *  Created by Julia Radzhabova on 5/24/17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 5/24/17
  *
  */
 
@@ -69,6 +68,7 @@ define([
                 tip: undefined
             };
             this._locked = false;
+            this._themeChanged = false;
 
             this.render();
         },
@@ -87,7 +87,7 @@ define([
                 enableKeyEvents: false,
                 itemTemplate: _.template([
                     '<div id="<%= id %>" class="signature-item">',
-                        '<div class="caret img-commonctrl img-colored <% if (name == "" || date == "") { %>' + 'nomargin' + '<% } %>"></div>',
+                        '<div class="caret-button <% if (name == "" || date == "") { %>' + 'nomargin' + '<% } %>"><div class="caret"></div></div>',
                         '<div class="name"><%= Common.Utils.String.htmlEncode(name) %></div>',
                         '<div class="date"><%= Common.Utils.String.htmlEncode(date) %></div>',
                     '</div>'
@@ -99,7 +99,7 @@ define([
                 enableKeyEvents: false,
                 itemTemplate: _.template([
                     '<div id="<%= id %>" class="signature-item">',
-                        '<div class="caret img-commonctrl <% if (name == "" || date == "") { %>' + 'nomargin' + '<% } %>"></div>',
+                        '<div class="caret-button <% if (name == "" || date == "") { %>' + 'nomargin' + '<% } %>"><div class="caret"></div></div>',
                         '<div class="name"><%= Common.Utils.String.htmlEncode(name) %></div>',
                         '<div class="date"><%= Common.Utils.String.htmlEncode(date) %></div>',
                     '</div>'
@@ -110,6 +110,9 @@ define([
             this.viewInvalidList.on('item:click', _.bind(this.onSelectSignature, this));
             this.viewValidList.on('item:contextmenu', _.bind(this.onItemContextMenu, this));
             this.viewInvalidList.on('item:contextmenu', _.bind(this.onItemContextMenu, this));
+
+            this.parentPanel = this.viewValidList.cmpEl.closest('.content-box');
+            this.onThemeChanged();
 
             this.signatureMenu = new Common.UI.Menu({
                 menuAlign   : 'tr-br',
@@ -127,10 +130,13 @@ define([
                 this.api.asc_registerCallback('asc_onUpdateSignatures',    _.bind(this.onApiUpdateSignatures, this));
             }
             Common.NotificationCenter.on('document:ready', _.bind(this.onDocumentReady, this));
+            Common.NotificationCenter.on('uitheme:changed', _.bind(this.onThemeChanged, this));
             return this;
         },
 
         ChangeSettings: function(props) {
+            if (this._themeChanged)
+                this.onThemeChanged();
             if (!this._state.hasValid && !this._state.hasInvalid)
                 this.updateSignatures(this.api.asc_getSignatures());
         },
@@ -182,7 +188,7 @@ define([
                 menu.hide();
             }
 
-            var offsetParent = $(this.el).offset(),
+            var offsetParent = Common.Utils.getOffset($(this.el)),
                 showPoint = [e.clientX*Common.Utils.zoom() - offsetParent.left + 5, e.clientY*Common.Utils.zoom() - offsetParent.top + 5];
 
             this.showSignatureMenu(record, showPoint);
@@ -199,8 +205,7 @@ define([
         onSelectSignature: function(picker, item, record, e){
             if (!record) return;
 
-            var btn = $(e.target);
-            if (btn && btn.hasClass('caret')) {
+            if ($(e.target).closest('.caret-button').length) {
                 var menu = this.signatureMenu;
                 if (menu.isVisible()) {
                     menu.hide();
@@ -208,8 +213,8 @@ define([
                 }
 
                 var currentTarget = $(e.currentTarget),
-                    offset = currentTarget.offset(),
-                    offsetParent = $(this.el).offset(),
+                    offset = Common.Utils.getOffset(currentTarget),
+                    offsetParent = Common.Utils.getOffset($(this.el)),
                     showPoint = [offset.left - offsetParent.left + currentTarget.width(), offset.top - offsetParent.top + currentTarget.height()/2];
 
                 this.showSignatureMenu(record, showPoint);
@@ -314,7 +319,7 @@ define([
                     text    : tipText,
                     showLink: showLink,
                     textLink: this.txtContinueEditing,
-                    placement: 'left-bottom'
+                    placement: Common.UI.isRTL() ? 'right-bottom' : 'left-bottom'
                 });
                 tip.on({
                     'dontshowclick': function() {
@@ -366,8 +371,24 @@ define([
                     review: true,
                     viewport: false,
                     documentHolder: {clear: true, disable: true},
-                    toolbar: true
+                    toolbar: true,
+                    header: {search: false},
+                    shortcuts: false,
+                    documentPreview: {draw: true}
                 }, 'signature');
+            }
+        },
+
+        onThemeChanged: function() {
+            var el = this.$el || $(this.el);
+            this._themeChanged = !el.is(':visible');
+            if (!this._themeChanged) {
+                var marginLeft = '-' + this.parentPanel.css('padding-left'),
+                    marginRight = '-' + this.parentPanel.css('padding-right');
+                this.viewValidList.cmpEl.css('margin-left', marginLeft);
+                this.viewValidList.cmpEl.css('margin-right', marginRight);
+                this.viewInvalidList.cmpEl.css('margin-left', marginLeft);
+                this.viewInvalidList.cmpEl.css('margin-right', marginRight);
             }
         },
 

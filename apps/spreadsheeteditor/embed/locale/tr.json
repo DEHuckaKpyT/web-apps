@@ -15,6 +15,7 @@
   "SSE.ApplicationController.downloadTextText": "Spreadsheet yükleniyor...",
   "SSE.ApplicationController.errorAccessDeny": "Hakkınız olmayan bir eylem gerçekleştirmeye çalışıyorsunuz.<br>Lütfen Belge Sunucu yöneticinize başvurun.",
   "SSE.ApplicationController.errorDefaultMessage": "Hata kodu: %1",
+  "SSE.ApplicationController.errorEditingDownloadas": "Belge ile çalışma sırasında bir hata oluştu.<br>Dosya yedek kopyasını bir sürücüye kaydetmek için 'Farklı Kaydet' seçeneğini kullanın.",
   "SSE.ApplicationController.errorFilePassProtect": "Döküman şifre korumalı ve açılamadı",
   "SSE.ApplicationController.errorFileSizeExceed": "Dosya boyutu, sunucunuz için belirlenen limiti aşıyor.<br>Ayrıntılar için lütfen Doküman Sunucusu yöneticinizle iletişime geçin.",
   "SSE.ApplicationController.errorForceSave": "Dosya kaydedilirken bir hata oluştu. Dosyayı bilgisayarınıza kaydetmek için lütfen 'Farklı Kaydet' seçeneğini kullanın veya daha sonra tekrar deneyin.",
@@ -24,6 +25,7 @@
   "SSE.ApplicationController.errorInconsistentExtPptx": "Dosya açılırken bir hata oluştu.<br>Dosya içeriği sunumlara karşılık geliyor (ör. pptx), ancak dosyanın uzantısı tutarsız: %1.",
   "SSE.ApplicationController.errorInconsistentExtXlsx": "Dosya açılırken bir hata oluştu.<br>Dosya içeriği e-tablolara (örn. xlsx) karşılık geliyor, ancak dosyanın uzantısı tutarsız: %1.",
   "SSE.ApplicationController.errorLoadingFont": "Yazı tipleri yüklenmedi.<br>Lütfen Doküman Sunucusu yöneticinize başvurun.",
+  "SSE.ApplicationController.errorToken": "Belge güvenlik belirteci doğru şekilde oluşturulmamış.<br>Lütfen Belge Sunucu yöneticinize başvurun.",
   "SSE.ApplicationController.errorTokenExpire": "Belge güvenlik belirtecinin süresi doldu.<br>Lütfen Belge Sunucusu yöneticinize başvurun.",
   "SSE.ApplicationController.errorUpdateVersionOnDisconnect": "İnternet bağlantısı tekrar sağlandı, ve dosya versiyon değişti.<br>Çalışmanıza devam etmeden önce, veri kaybını önlemeniz için dosyasının bir kopyasını indirmeniz ya da dosya içeriğini kopyalamanız ve sonrasında sayfayı yenilemeniz gerekmektedir.",
   "SSE.ApplicationController.errorUserDrop": "Belgeye şu an erişilemiyor.",
@@ -47,6 +49,6 @@
   "SSE.ApplicationView.txtFileLocation": "Dosya konumunu aç",
   "SSE.ApplicationView.txtFullScreen": "Tam Ekran",
   "SSE.ApplicationView.txtPrint": "Yazdır",
-  "SSE.ApplicationView.txtSearch": "Arama",
+  "SSE.ApplicationView.txtSearch": "Bul",
   "SSE.ApplicationView.txtShare": "Paylaş"
 }

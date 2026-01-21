@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui, viewport-fit=cover, interactive-widget=resizes-content">
 
   <meta name="theme-color" content="#007aff">
   <meta name="format-detection" content="telephone=no">
@@ -15,6 +15,8 @@
   <link rel="apple-touch-icon" href="static/icons/apple-touch-icon.png">
   <link rel="icon" href="static/icons/favicon.png">
 
+  <link rel="stylesheet" href="../../../../sdkjs/cell/css/main-mobile.css">
+
     <% if (!htmlWebpackPlugin.options.skeleton.stylesheet) { %>
         <link rel="stylesheet" href="../../common/mobile/resources/css/skeleton.css">
     <% } else { %>
@@ -24,6 +26,9 @@
   <!-- built styles file will be auto injected -->
 </head>
 <body>
+    <script>
+        window.Common = {Locale: {defaultLang: <%= htmlWebpackPlugin.options.system.env.defaultLang %>}};
+    </script>
     <% if ( htmlWebpackPlugin.options.skeleton.htmlscript ) { %>
     <script>
         window.asceditor = 'cell';
@@ -76,13 +81,9 @@
             return urlParams;
         }
 
-        window.Common = {Locale: {defaultLang: <%= htmlWebpackPlugin.options.system.env.defaultLang %>}};
-        let params = getUrlParams(),
-            lang = (params["lang"] || window.Common.Locale.defaultLang).split(/[\-\_]/)[0];
-
+        let params = getUrlParams()
         window.frameEditorId = params["frameEditorId"];
         window.parentOrigin = params["parentOrigin"];
-        window.Common.Locale.currentLang = lang;
     </script>
 
     <script type="text/javascript" src="../../../vendor/jquery/jquery.min.js"></script>

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,8 +30,7 @@
  *
  */
 define([
-    'core',
-    'documenteditor/main/app/view/FileMenuPanels'
+    'core'
 ], function () {
     'use strict';
 
@@ -44,7 +43,10 @@ define([
             this.adjPrintParams = new Asc.asc_CAdjustPrint();
             this._state = {
                 lock_doc: false,
-                firstPrintPage: 0
+                firstPrintPage: 0,
+                shouldUpdateCmbPrinter: false, 
+                currentPrinter: null,
+                printersList: []
             };
 
             this._navigationPreview = {
@@ -61,17 +63,24 @@ define([
                     'render:after': _.bind(this.onAfterRender, this)
                 }
             });
+            Common.NotificationCenter.on('script:loaded', _.bind(this.onPostLoadComplete, this));
         },
 
         onLaunch: function() {
+        },
+
+        onPostLoadComplete: function() {
+            this.views = this.getApplication().getClasseRefs('view', ['PrintWithPreview']);
             this.printSettings = this.createView('PrintWithPreview');
+            this.setMode(this.mode);
         },
 
         onAfterRender: function(view) {
             var me = this;
             this.printSettings.menu.on('menu:hide', _.bind(this.onHidePrintMenu, this));
-            this.printSettings.btnPrint.on('click', _.bind(this.onBtnPrint, this, true));
-            this.printSettings.btnPrintPdf.on('click', _.bind(this.onBtnPrint, this, false));
+            this.printSettings.btnPrintSystemDialog.on('click', _.bind(this.onBtnPrint, this, true, true));
+            this.printSettings.btnPrint.on('click', _.bind(this.onBtnPrint, this, true, false));
+            this.printSettings.btnPrintPdf.on('click', _.bind(this.onBtnPrint, this, false, false));
             this.printSettings.btnPrevPage.on('click', _.bind(this.onChangePreviewPage, this, false));
             this.printSettings.btnNextPage.on('click', _.bind(this.onChangePreviewPage, this, true));
             this.printSettings.txtNumberPage.on({
@@ -174,12 +183,19 @@ define([
 
         onApiPageSize: function(w, h) {
             this._state.pgsize = [w, h];
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var width = this._state.pgorient ? w : h,
                     height = this._state.pgorient ? h : w;
                 var panel = this.printSettings;
                 var store = panel.cmbPaperSize.store,
+                    cmbPaperSizeRecord = panel.cmbPaperSize.getSelectedRecord(),
                     item = null;
+
+                panel.setOriginalPageSize(w, h);
+
+                if (cmbPaperSizeRecord && Math.abs(w - cmbPaperSizeRecord.size[0]) < 0.1 && Math.abs(h - cmbPaperSizeRecord.size[1]) < 0.1) {
+                    return;
+                }
                 for (var i=0; i<store.length-1; i++) {
                     var rec = store.at(i),
                         size = rec.get('size'),
@@ -192,9 +208,17 @@ define([
                 }
                 if (item)
                     panel.cmbPaperSize.setValue(item.get('value'));
-                else
-                    panel.cmbPaperSize.setValue(this.txtCustom + ' (' + parseFloat(Common.Utils.Metric.fnRecalcFromMM(width).toFixed(2)) + Common.Utils.Metric.getCurrentMetricName() + ' x ' +
-                        parseFloat(Common.Utils.Metric.fnRecalcFromMM(height).toFixed(2)) + Common.Utils.Metric.getCurrentMetricName() + ')');
+                else {
+                    if (panel.$el.prop('id') === 'panel-print') {
+                        panel.cmbPaperSize.setValue(undefined, [this.txtCustom,
+                            parseFloat(Common.Utils.Metric.fnRecalcFromMM(width).toFixed(2)),
+                            parseFloat(Common.Utils.Metric.fnRecalcFromMM(height).toFixed(2)),
+                            Common.Utils.Metric.getCurrentMetricName()]);
+                    } else {
+                        panel.cmbPaperSize.setValue(this.txtCustom + ' (' + parseFloat(Common.Utils.Metric.fnRecalcFromMM(width).toFixed(2)) + Common.Utils.Metric.getCurrentMetricName() + ' x ' +
+                            parseFloat(Common.Utils.Metric.fnRecalcFromMM(height).toFixed(2)) + Common.Utils.Metric.getCurrentMetricName() + ')');
+                    }
+                }
             } else {
                 this.isFillProps = false;
             }
@@ -202,7 +226,7 @@ define([
 
         onApiPageOrient: function(isportrait) {
             this._state.pgorient = !!isportrait;
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var item = this.printSettings.cmbPaperOrientation.store.findWhere({value: this._state.pgorient ? Asc.c_oAscPageOrientation.PagePortrait : Asc.c_oAscPageOrientation.PageLandscape});
                 if (item) this.printSettings.cmbPaperOrientation.setValue(item.get('value'));
             }
@@ -212,7 +236,7 @@ define([
             if (!props) return;
 
             this._state.sectionprops = props;
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var left = props.get_LeftMargin(),
                     top = props.get_TopMargin(),
                     right = props.get_RightMargin(),
@@ -254,7 +278,7 @@ define([
             this._navigationPreview.pageCount = count;
             if (this._navigationPreview.currentPreviewPage > count - 1) {
                 this._navigationPreview.currentPreviewPage = Math.max(0, count - 1);
-                if (this.printSettings.isVisible()) {
+                if (this.printSettings && this.printSettings.isVisible()) {
                     this.api.asc_drawPrintPreview(this._navigationPreview.currentPreviewPage);
                     this.updateNavigationButtons(this._navigationPreview.currentPreviewPage, count);
                 }
@@ -263,7 +287,7 @@ define([
 
         onCurrentPage: function(number) {
             this._navigationPreview.currentPreviewPage = number;
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 this.api.asc_drawPrintPreview(this._navigationPreview.currentPreviewPage);
                 this.updateNavigationButtons(this._navigationPreview.currentPreviewPage, this._navigationPreview.pageCount);
             }
@@ -287,6 +311,10 @@ define([
             this.updateNavigationButtons(this._navigationPreview.currentPreviewPage, this._navigationPreview.pageCount);
             this.SetDisabled();
             this._isPreviewVisible = true;
+
+            if(this._state.shouldUpdateCmbPrinter) {
+                this.updateCmbPrinter();      
+            }
         },
 
         onPaperSizeSelect: function(combo, record) {
@@ -360,7 +388,7 @@ define([
 
         onUpdateLastCustomMargins: function(props) {
             this._state.lastmargins = props;
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var top = props ? props.get_TopMargin() : Common.localStorage.getItem("de-pgmargins-top"),
                     left = props ? props.get_LeftMargin() : Common.localStorage.getItem("de-pgmargins-left"),
                     bottom = props ? props.get_BottomMargin() : Common.localStorage.getItem("de-pgmargins-bottom"),
@@ -383,6 +411,24 @@ define([
             }
 
             Common.NotificationCenter.trigger('edit:complete');
+        },
+
+        setPrintersInfo: function(currentPrinter, list, isWaitingForPrinters) {
+            this._state.currentPrinter = currentPrinter || this._state.currentPrinter;
+            this._state.printersList = _.uniq(_.union(this._state.printersList, list), function(option) {
+                return option.name;
+            });
+            this._state.isWaitingForPrinters = !!isWaitingForPrinters;
+            this._state.shouldUpdateCmbPrinter = true;
+
+            if(this.printSettings && this.printSettings.isVisible() && this._state.shouldUpdateCmbPrinter) {
+                this.updateCmbPrinter();
+            }
+        },
+
+        updateCmbPrinter: function() {
+            this.printSettings.updateCmbPrinter(this._state.currentPrinter, this._state.printersList, this._state.isWaitingForPrinters);
+            this._state.shouldUpdateCmbPrinter = false;
         },
 
         checkPageSize: function(width, height, left, right, top, bottom) {
@@ -499,7 +545,7 @@ define([
             this.printSettings.btnNextPage.setDisabled(curPage > pageCount - 2);
         },
 
-        onBtnPrint: function(print) {
+        onBtnPrint: function(print, useSystemDialog) {
             this._isPrint = print;
             if (this.printSettings.cmbRange.getValue()===-1 && this.printSettings.inputPages.checkValidate() !== true)  {
                 this.printSettings.inputPages.focus();
@@ -512,7 +558,11 @@ define([
                 this._state.firstPrintPage = this._navigationPreview.currentPage;
 
             var size = this.api.asc_getPageSize(this._state.firstPrintPage);
+            var printerOption = this.printSettings.cmbPrinter.getSelectedRecord();
             this.adjPrintParams.asc_setNativeOptions({
+                usesystemdialog: useSystemDialog,
+                printer: printerOption ? printerOption.value : null,
+                colorMode: this.printSettings.cmbColorPrinting.getValue() === 'color',
                 pages: this.printSettings.cmbRange.getValue()===-1 ? this.printSettings.inputPages.getValue() : this.printSettings.cmbRange.getValue(),
                 paperSize: {
                     w: size ? size['W'] : undefined,
@@ -557,7 +607,7 @@ define([
         },
 
         SetDisabled: function() {
-            if (this.printSettings.isVisible()) {
+            if (this.printSettings && this.printSettings.isVisible()) {
                 var disable = !this.mode.isEdit || this._state.lock_doc;
                 this.printSettings.cmbPaperSize.setDisabled(disable);
                 this.printSettings.cmbPaperMargins.setDisabled(disable);

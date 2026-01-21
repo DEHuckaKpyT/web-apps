@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,18 +32,12 @@
 /**
  *  HeaderFooterDialog.js
  *
- *  Created by Julia Radzhabova on 10/11/18
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 10/11/18
  *
  */
 
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window',
-    'common/main/lib/component/ComboBoxFonts'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.HeaderFooterDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -100,21 +94,27 @@ define([
                             '</td>',
                         '</tr>',
                     '</table>',
-                    '<div class="input-row input-row-tabs" style="margin-bottom: 15px;">',
-                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hf-btn-all" style="border-radius: 0;">', this.textAll,'</button>',
-                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-odd" style="border-radius: 0;">', this.textOdd,'</button>',
-                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-even" style="border-radius: 0;">', this.textEven,'</button>',
-                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-first" style="border-radius: 0;">', this.textFirst,'</button>',
+                    '<div style="margin-bottom: 15px;">',
+                        '<button type="button" class="btn btn-text-default auto" id="id-dlg-hf-btn-all">', this.textAll,'</button>',
+                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-odd">', this.textOdd,'</button>',
+                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-even">', this.textEven,'</button>',
+                        '<button type="button" class="btn btn-text-default auto hidden" id="id-dlg-hf-btn-first">', this.textFirst,'</button>',
                     '</div>',
-                    '<label style="display: block; margin-bottom: 3px;">' + this.textHeader + '</label>',
-                    '<div id="id-dlg-h-presets" class="input-row" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-h-insert" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-h-fonts" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-h-font-size" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-h-textcolor" class="margin-left-6" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-h-bold" class="margin-left-2" style="display: inline-block;"></div>','<div id="id-dlg-h-italic" class="margin-left-6" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-h-underline" class="margin-left-6" style="display: inline-block;"></div>','<div id="id-dlg-h-strikeout" class="margin-left-6" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-h-subscript" class="margin-left-6" style="display: inline-block;"></div>','<div id="id-dlg-h-superscript" class="margin-left-6" style="display: inline-block;"></div>',
+                    '<table style="width: 100%;">',
+                    '<tr>','<td>',
+                    '<label style="margin-bottom: 3px;">' + this.textHeader + '</label>',
+                    '</td>','</tr>',
+                    '<tr>','<td class="display-flex-row-center">',
+                    '<div id="id-dlg-h-presets"></div>',
+                    '<div id="id-dlg-h-insert" class="margin-left-2"></div>',
+                    '<div id="id-dlg-h-fonts" class="margin-left-2" style="flex-grow: 1; flex-shrink: 1;"></div>',
+                    '<div id="id-dlg-h-font-size" class="margin-left-2"></div>',
+                    '<div id="id-dlg-h-textcolor" class="margin-left-6" style="flex-shrink: 0;"></div>',
+                    '<div id="id-dlg-h-bold" class="margin-left-2"></div>','<div id="id-dlg-h-italic" class="margin-left-6"></div>',
+                    '<div id="id-dlg-h-underline" class="margin-left-6"></div>','<div id="id-dlg-h-strikeout" class="margin-left-6"></div>',
+                    '<div id="id-dlg-h-subscript" class="margin-left-6"></div>','<div id="id-dlg-h-superscript" class="margin-left-6"></div>',
+                    '</td>','</tr>',
+                    '<tr>','<td>',
                         '<div class="preview-container" style="display: inline-block;margin-top: 7px;vertical-align: middle;">',
                             '<div class="preview-canvas-container" style="width: 206px; height: 92px; position:relative; overflow:hidden;">',
                                 '<div id="header-left-img" style="width: 190px; height: 100%;"></div>',
@@ -130,15 +130,21 @@ define([
                                 '<div id="header-right-img" style="width: 190px; height: 100%;"></div>',
                             '</div>',
                         '</div>',
+                    '</td>','</tr>',
+                    '<tr>','<td>',
                     '<label style="display: block; margin-top: 10px;margin-bottom: 3px;">' + this.textFooter + '</label>',
-                    '<div id="id-dlg-f-presets" class="input-row" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-f-insert" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-f-fonts" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-f-font-size" class="input-row margin-left-2" style="display: inline-block; vertical-align: middle;"></div>',
-                    '<div id="id-dlg-f-textcolor" class="margin-left-6" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-f-bold" class="margin-left-2" style="display: inline-block;"></div>','<div id="id-dlg-f-italic" class="margin-left-6" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-f-underline" class="margin-left-6" style="display: inline-block;"></div>','<div class="margin-left-6" id="id-dlg-f-strikeout" style="display: inline-block;"></div>',
-                    '<div id="id-dlg-f-subscript" class="margin-left-6" style="display: inline-block;"></div>','<div id="id-dlg-f-superscript" class="margin-left-6" style="display: inline-block;"></div>',
+                    '</td>','</tr>',
+                    '<tr>','<td class="display-flex-row-center">',
+                    '<div id="id-dlg-f-presets"></div>',
+                    '<div id="id-dlg-f-insert" class="margin-left-2"></div>',
+                    '<div id="id-dlg-f-fonts" class="margin-left-2" style="flex-grow: 1; flex-shrink: 1;"></div>',
+                    '<div id="id-dlg-f-font-size" class="margin-left-2"></div>',
+                    '<div id="id-dlg-f-textcolor" class="margin-left-6" style="flex-shrink: 0;"></div>',
+                    '<div id="id-dlg-f-bold" class="margin-left-2"></div>','<div id="id-dlg-f-italic" class="margin-left-6"></div>',
+                    '<div id="id-dlg-f-underline" class="margin-left-6"></div>','<div class="margin-left-6" id="id-dlg-f-strikeout"></div>',
+                    '<div id="id-dlg-f-subscript" class="margin-left-6"></div>','<div id="id-dlg-f-superscript" class="margin-left-6"></div>',
+                    '</td>','</tr>',
+                    '<tr>','<td>',
                         '<div class="preview-container" style="display: inline-block;margin-top: 7px;vertical-align: middle;">',
                             '<div class="preview-canvas-container" style="width: 206px; height: 92px; position:relative; overflow:hidden;">',
                                 '<div id="footer-left-img" style="width: 190px; height: 100%;"></div>',
@@ -154,6 +160,9 @@ define([
                                 '<div id="footer-right-img" style="width: 190px; height: 100%;"></div>',
                             '</div>',
                         '</div>',
+                    '</td>','</tr>',
+                    '<tr>','<td>',
+                '</table>',
                 '</div>'
             ].join('');
 
@@ -270,6 +279,8 @@ define([
             });
             this.btnFirst.on('toggle', _.bind(this.onPageTypeToggle, this, Asc.c_oAscHeaderFooterType.first));
 
+            Common.UI.GroupedButtons([this.btnAll, this.btnOdd, this.btnEven, this.btnFirst], {underline: true});
+
             this.btnPresetsH = new Common.UI.Button({
                 parentEl: $('#id-dlg-h-presets'),
                 cls: 'btn-text-menu-default',
@@ -330,7 +341,7 @@ define([
             this.cmbFonts.push(new Common.UI.ComboBoxFonts({
                 el          : $('#id-dlg-h-fonts'),
                 cls         : 'input-group-nr',
-                style       : 'width: 130px;',
+                style       : 'min-width: 90px;',
                 menuCls     : 'scrollable-menu',
                 menuStyle   : 'min-width: 100%;max-height: 270px;',
                 store       : new Common.Collections.Fonts(),
@@ -344,7 +355,7 @@ define([
             this.cmbFonts.push(new Common.UI.ComboBoxFonts({
                 el          : $('#id-dlg-f-fonts'),
                 cls         : 'input-group-nr',
-                style       : 'width: 130px;',
+                style       : 'min-width: 90px;',
                 menuCls     : 'scrollable-menu',
                 menuStyle   : 'min-width: 100%;max-height: 270px;',
                 store       : new Common.Collections.Fonts(),
@@ -983,19 +994,7 @@ define([
                     clr = Common.Utils.ThemeColor.getHexColor(color.get_r(), color.get_g(), color.get_b());
                 }
             }
-            if (_.isObject(clr)) {
-                var isselected = false;
-                for (var i = 0; i < 10; i++) {
-                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                        fontColorPicker.select(clr, true);
-                        isselected = true;
-                        break;
-                    }
-                }
-                if (!isselected) fontColorPicker.clearSelection();
-            } else {
-                fontColorPicker.select(clr, true);
-            }
+            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
         },
 
         tipFontName: 'Font',

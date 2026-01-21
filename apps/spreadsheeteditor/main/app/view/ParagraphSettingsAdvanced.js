@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,17 +32,13 @@
 /**
  *  ParagraphSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 3/31/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 3/31/14
  *
  */
 
-define([    'text!spreadsheeteditor/main/app/template/ParagraphSettingsAdvanced.template',
+define([
+    'text!spreadsheeteditor/main/app/template/ParagraphSettingsAdvanced.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/RadioBox',
-    'common/main/lib/component/ListView'
 ], function (contentTemplate) {
     'use strict';
 
@@ -130,6 +126,11 @@ define([    'text!spreadsheeteditor/main/app/template/ParagraphSettingsAdvanced.
                 takeFocusOnClose: true
             });
             this.cmbTextAlignment.setValue('');
+            this.cmbTextAlignment.on('selected', _.bind(function(combo, record) {
+                if (this._changedProps) {
+                    this._changedProps.asc_putJc(record.value>-1 ? record.value: null);
+                }
+            }, this));
 
             this.numIndentsLeft = new Common.UI.MetricSpinner({
                 el: $('#paragraphadv-spin-indent-left'),
@@ -446,9 +447,6 @@ define([    'text!spreadsheeteditor/main/app/template/ParagraphSettingsAdvanced.
                 }, this);
             }
 
-            var horizontalAlign = this.cmbTextAlignment.getValue();
-            this._changedProps.asc_putJc((horizontalAlign !== undefined && horizontalAlign !== null) ? horizontalAlign : c_paragraphTextAlignment.LEFT);
-
             if (this.Spacing !== null) {
                 this._changedProps.asc_putSpacing(this.Spacing);
             }
@@ -464,7 +462,7 @@ define([    'text!spreadsheeteditor/main/app/template/ParagraphSettingsAdvanced.
                 this.numIndentsLeft.setValue((props.asc_getInd() !== null && props.asc_getInd().asc_getLeft() !== null) ? Common.Utils.Metric.fnRecalcFromMM(props.asc_getInd().asc_getLeft()) : '', true);
                 this.numIndentsRight.setValue((props.asc_getInd() !== null && props.asc_getInd().asc_getRight() !== null) ? Common.Utils.Metric.fnRecalcFromMM(props.asc_getInd().asc_getRight()) : '', true);
 
-                this.cmbTextAlignment.setValue((props.asc_getJc() !== undefined && props.asc_getJc() !== null) ? props.asc_getJc() : c_paragraphTextAlignment.CENTERED, true);
+                this.cmbTextAlignment.setValue((props.asc_getJc() !== undefined && props.asc_getJc() !== null) ? props.asc_getJc() : '');
 
                 if(this.CurSpecial === undefined) {
                     this.CurSpecial = (props.asc_getInd().asc_getFirstLine() === 0) ? c_paragraphSpecial.NONE_SPECIAL : ((props.asc_getInd().asc_getFirstLine() > 0) ? c_paragraphSpecial.FIRST_LINE : c_paragraphSpecial.HANGING);

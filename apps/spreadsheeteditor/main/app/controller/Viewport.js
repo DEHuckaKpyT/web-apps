@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *    Controller for the viewport
  *
- *    Created by Maxim Kadushkin on 24 March 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 24 March 2014
  *
  */
 
@@ -74,7 +73,8 @@ define([
                 },
                 'Statusbar': {
                     'view:compact': function (statusbar, state) {
-                        me.viewport.vlayout.getItem('statusbar').height = state ? 25 : 50;
+                        var height = parseInt(window.getComputedStyle(document.body).getPropertyValue('--statusbar-height') || 25);
+                        me.viewport.vlayout.getItem('statusbar').height = state ? height : height * 2;
                     }
                 },
                 'Toolbar': {
@@ -83,34 +83,26 @@ define([
                         if (!config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle)
                             toolbar.setExtra('right', me.header.getPanel('right', config));
 
-                        if (!config.isEdit || config.customization && !!config.customization.compactHeader)
+                        if (!config.twoLevelHeader || config.compactHeader)
                             toolbar.setExtra('left', me.header.getPanel('left', config));
 
-                        if ( me.appConfig && me.appConfig.isEdit && !(config.customization && config.customization.compactHeader) && toolbar.btnCollabChanges )
+                        if ( me.appConfig && me.appConfig.isEdit && !config.compactHeader && toolbar.btnCollabChanges )
                             toolbar.btnCollabChanges = me.header.btnSave;
-
-                        var value = Common.localStorage.getBool("sse-settings-quick-print-button", true);
+                        me.toolbar = toolbar;
+                        /*var value = Common.localStorage.getBool("sse-settings-quick-print-button", true);
                         Common.Utils.InternalSettings.set("sse-settings-quick-print-button", value);
                         if (me.header && me.header.btnPrintQuick)
-                            me.header.btnPrintQuick[value ? 'show' : 'hide']();
+                            me.header.btnPrintQuick[value ? 'show' : 'hide']();*/
                     },
                     'view:compact'  : function (toolbar, state) {
                         me.viewport.vlayout.getItem('toolbar').height = state ?
                             Common.Utils.InternalSettings.get('toolbar-height-compact') : Common.Utils.InternalSettings.get('toolbar-height-normal');
                     },
                     'undo:disabled' : function (state) {
-                        if ( me.header.btnUndo ) {
-                            if ( me.header.btnUndo.keepState )
-                                me.header.btnUndo.keepState.disabled = state;
-                            else me.header.btnUndo.setDisabled(state);
-                        }
+                        me.header.lockHeaderBtns( 'undo', state, Common.enumLock.undoLock );
                     },
                     'redo:disabled' : function (state) {
-                        if ( me.header.btnRedo ) {
-                            if ( me.header.btnRedo.keepState )
-                                me.header.btnRedo.keepState.disabled = state;
-                            else me.header.btnRedo.setDisabled(state);
-                        }
+                        me.header.lockHeaderBtns( 'redo', state, Common.enumLock.redoLock );
                     },
                     'print:disabled' : function (state) {
                         if ( me.header.btnPrint )
@@ -127,6 +119,9 @@ define([
 
             Common.NotificationCenter.on('app:face', this.onAppShowed.bind(this));
             Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
+            Common.NotificationCenter.on('tabstyle:changed', this.onTabStyleChange.bind(this));
+            Common.NotificationCenter.on('tabbackground:changed', this.onTabBackgroundChange.bind(this));
+            Common.NotificationCenter.on('uitheme:changed', this.onThemeChanged.bind(this));
         },
 
         setApi: function(api) {
@@ -147,19 +142,17 @@ define([
             var $filemenu = $('.toolbar-fullview-panel');
             $filemenu.css('top', Common.UI.LayoutManager.isElementVisible('toolbar') ? _intvars.get('toolbar-height-tabs') : 0);
 
-            me.viewport.$el.attr('applang', me.appConfig.lang.split(/[\-_]/)[0]);
-
             if ( !config.isEdit ||
                     ( !Common.localStorage.itemExists("sse-compact-toolbar") &&
                         config.customization && config.customization.compactToolbar ))
             {
                 me.viewport.vlayout.getItem('toolbar').height = _intvars.get('toolbar-height-compact');
-            } else
-            if ( config.isEditDiagram || config.isEditMailMerge || config.isEditOle ) {
+            } else if ( config.isEditDiagram || config.isEditMailMerge || config.isEditOle ) {
                 me.viewport.vlayout.getItem('toolbar').height = 41;
+                document.body.classList.add('inner-simple-editor');
             }
 
-            if ( config.isEdit && !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle && !(config.customization && config.customization.compactHeader)) {
+            if ( config.twoLevelHeader && !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle && !config.compactHeader) {
                 var $title = me.viewport.vlayout.getItem('title').el;
                 $title.html(me.header.getPanel('title', config)).show();
                 $title.find('.extra').html(me.header.getPanel('left', config));
@@ -176,15 +169,16 @@ define([
                 $filemenu.css('top', (Common.UI.LayoutManager.isElementVisible('toolbar') ? _tabs_new_height : 0) + _intvars.get('document-title-height'));
             }
 
-            if ( config.customization ) {
-                if ( config.customization.toolbarNoTabs )
-                    me.viewport.vlayout.getItem('toolbar').el.addClass('style-off-tabs');
-
-                if ( config.customization.toolbarHideFileName )
-                    me.viewport.vlayout.getItem('toolbar').el.addClass('style-skip-docname');
-            }
+            me.onTabStyleChange();
+            me.onTabBackgroundChange();
+            if ( config.customization && config.customization.toolbarHideFileName )
+                me.viewport.vlayout.getItem('toolbar').el.addClass('style-skip-docname');
 
             me.header.btnSearch.on('toggle', me.onSearchToggle.bind(this));
+
+            $('#toolbar, #app-title').on('mousewheel', function (e) {
+                e.preventDefault();
+            });
         },
 
         onAppReady: function (config) {
@@ -199,7 +193,8 @@ define([
             this.api = new Asc.spreadsheet_api({
                 'id-view'  : 'editor_sdk',
                 'id-input' : 'ce-cell-content',
-                'translate': this.getApplication().getController('Main').translationTable
+                'translate': this.getApplication().getController('Main').translationTable,
+                'isRtlInterface': Common.UI.isRTL()
             });
 
             this.header   = this.createView('Common.Views.Header', {
@@ -286,16 +281,16 @@ define([
             var me = this;
             var _need_disable =  opts == 'show';
 
-            me.header.lockHeaderBtns( 'undo', _need_disable );
-            me.header.lockHeaderBtns( 'redo', _need_disable );
+            me.header.lockHeaderBtns( 'undo', _need_disable, Common.enumLock.fileMenuOpened );
+            me.header.lockHeaderBtns( 'redo', _need_disable, Common.enumLock.fileMenuOpened );
             me.header.lockHeaderBtns( 'users', _need_disable );
         },
 
         applySettings: function () {
-            var value = Common.localStorage.getBool("sse-settings-quick-print-button", true);
-            Common.Utils.InternalSettings.set("sse-settings-quick-print-button", value);
-            if (this.header && this.header.btnPrintQuick)
-                this.header.btnPrintQuick[value ? 'show' : 'hide']();
+            // var value = Common.localStorage.getBool("sse-settings-quick-print-button", true);
+            // Common.Utils.InternalSettings.set("sse-settings-quick-print-button", value);
+            // if (this.header && this.header.btnPrintQuick)
+            //     this.header.btnPrintQuick[value ? 'show' : 'hide']();
         },
 
         onApiCoAuthoringDisconnect: function(enableDownload) {
@@ -350,6 +345,49 @@ define([
 
         isSearchBarVisible: function () {
             return this.searchBar && this.searchBar.isVisible();
+        },
+
+        onTabStyleChange: function (style) {
+            style = style || Common.Utils.InternalSettings.get("settings-tab-style");
+            this.viewport.vlayout.getItem('toolbar').el.toggleClass('lined-tabs', style==='line');
+        },
+
+        onTabBackgroundChange: function (background) {
+            background = background || Common.Utils.InternalSettings.get("settings-tab-background");
+            this.viewport.vlayout.getItem('toolbar').el.toggleClass('style-off-tabs', background==='toolbar');
+        },
+
+        onThemeChanged: function () {
+            if (Common.UI.Themes.available()) {
+                var _intvars = Common.Utils.InternalSettings,
+                    config = this.appConfig;
+
+                const computed_style = window.getComputedStyle(document.body);
+
+                if ( !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle) {
+                    var $filemenu = $('.toolbar-fullview-panel');
+                    _intvars.set('toolbar-height-controls', parseInt(computed_style.getPropertyValue("--toolbar-height-controls") || 84));
+                    _intvars.set('toolbar-height-normal', _intvars.get('toolbar-height-tabs') + _intvars.get('toolbar-height-controls'));
+                    $filemenu.css('top', (Common.UI.LayoutManager.isElementVisible('toolbar') ? _intvars.get('toolbar-height-tabs') : 0) +
+                                         (config.twoLevelHeader && !config.compactHeader ? _intvars.get('document-title-height') : 0));
+
+                    this.viewport.vlayout.getItem('toolbar').height = this.toolbar && this.toolbar.isCompact() ?
+                        _intvars.get('toolbar-height-compact') : _intvars.get('toolbar-height-normal');
+                }
+
+                var height = parseInt(computed_style.getPropertyValue('--statusbar-height'));
+                var NoCompact = $('.statusbar').hasClass('no-compact');
+                this.viewport.vlayout.getItem('statusbar').height = NoCompact ? height * 2 : height;
+            
+            
+                var celleditor = this.viewport.celayout.getItem('celleditor');
+                var celleditorResizeOptions = this.viewport.getCelleditorResizeOptions();
+                celleditor.resize.min = celleditorResizeOptions.min;
+                celleditor.resize.multiply.koeff = celleditorResizeOptions.multiply.koeff;
+                celleditor.resize.multiply.offset = celleditorResizeOptions.multiply.offset;
+
+                Common.NotificationCenter.trigger('layout:changed', 'toolbar');
+            }
         },
 
         textHideFBar: 'Hide Formula Bar',

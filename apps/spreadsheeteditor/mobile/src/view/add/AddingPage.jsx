@@ -1,5 +1,6 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Page, Navbar, NavTitle, NavRight, Link, Icon, Tabs, Tab, f7 } from 'framework7-react';
+import { observer, inject } from "mobx-react";
 import { useTranslation } from 'react-i18next';
 import { AddChartController } from "../../controller/add/AddChart";
 import { AddFunctionController } from "../../controller/add/AddFunction";
@@ -8,6 +9,17 @@ import { AddOtherController } from "../../controller/add/AddOther";
 import { Device } from "../../../../../common/mobile/utils/device";
 import { MainContext } from '../../page/main';
 import { AddingContext } from '../../controller/add/Add';
+import SvgIcon from '@common/lib/component/SvgIcon';
+import IconAddShapeIos from '@common-ios-icons/icon-add-shape.svg?ios';
+import IconAddShapeAndroid from '@common-android-icons/icon-add-shape.svg';
+import IconAddOtherIos from '@common-ios-icons/icon-add-other.svg?ios';
+import IconAddOtherAndroid from '@common-android-icons/icon-add-other.svg';
+import IconAddChartIos from '@ios-icons/icon-add-chart.svg?ios';
+import IconAddChartAndroid from '@android-icons/icon-add-chart.svg';
+import IconAddFormulaIos from '@ios-icons/icon-add-formula.svg?ios';
+import IconAddFormulaAndroid from '@android-icons/icon-add-formula.svg';
+import IconExpandDownIos from '@common-ios-icons/icon-expand-down.svg?ios';
+import IconExpandDownAndroid from '@common-android-icons/icon-expand-down.svg';
 
 const AddLayoutNavbar = ({ tabs }) => {
     const isAndroid = Device.android;
@@ -19,12 +31,16 @@ const AddLayoutNavbar = ({ tabs }) => {
                 <div className='tab-buttons tabbar'>
                     {tabs.map((item, index) =>
                         <Link key={"sse-link-" + item.id} tabLink={"#" + item.id} tabLinkActive={index === 0}>
-                            <Icon slot="media" icon={item.icon}></Icon>
+                            <SvgIcon symbolId={item.icon} className={'icon icon-svg'} />
                         </Link>)}
                     {isAndroid && <span className='tab-link-highlight' style={{width: 100 / tabs.lenght + '%'}}></span>}
                 </div> : <NavTitle>{tabs[0].caption}</NavTitle>
             }
-            {Device.phone && <NavRight><Link icon='icon-expand-down' popupClose=".add-popup"></Link></NavRight> }
+            {Device.phone && <NavRight><Link popupClose=".add-popup">
+                {Device.ios ? 
+                    <SvgIcon symbolId={IconExpandDownIos.id} className={'icon icon-svg'} /> :
+                    <SvgIcon symbolId={IconExpandDownAndroid.id} className={'icon icon-svg'} />
+                }</Link></NavRight> }
         </Navbar>
     )
 };
@@ -43,22 +59,30 @@ const AddLayoutContent = ({ tabs }) => {
     )
 };
 
-const AddingPage = () => {
+const AddingPage = inject("storeApplicationSettings")(observer(props => {
     const { t } = useTranslation();
     const _t = t('View.Add', {returnObjects: true});
     const mainContext = useContext(MainContext);
     const addingContext = useContext(AddingContext);
+    const storeApplicationSettings = props.storeApplicationSettings;
+    const directionMode = storeApplicationSettings.directionMode;
     // const wsLock = mainContext.wsLock;
     const wsProps = mainContext.wsProps;
     const showPanels = addingContext.showPanels;
     const tabs = [];
+
+    useEffect(() => {
+        if(directionMode === 'rtl') {
+            tabs.reverse();
+        }
+    }, [directionMode])
     
     if(!wsProps.Objects) {
         if(!showPanels) {
             tabs.push({
                 caption: _t.textChart,
                 id: 'add-chart',
-                icon: 'icon-add-chart',
+                icon: Device.ios ? IconAddChartIos.id : IconAddChartAndroid.id,
                 component: <AddChartController />
             });
         }
@@ -67,7 +91,7 @@ const AddingPage = () => {
             tabs.push({
                 caption: _t.textFunction,
                 id: 'add-function',
-                icon: 'icon-add-formula',
+                icon: Device.ios ? IconAddFormulaIos.id : IconAddFormulaAndroid.id,
                 component: <AddFunctionController />
             });
         }
@@ -76,7 +100,7 @@ const AddingPage = () => {
             tabs.push({
                 caption: _t.textShape,
                 id: 'add-shape',
-                icon: 'icon-add-shape',
+                icon: Device.ios ? IconAddShapeIos.id : IconAddShapeAndroid.id,
                 component: <AddShapeController />
             });
         }
@@ -95,7 +119,7 @@ const AddingPage = () => {
         tabs.push({
             caption: _t.textOther,
             id: 'add-other',
-            icon: 'icon-add-other',
+            icon: Device.ios ? IconAddOtherIos.id : IconAddOtherAndroid.id,
             component: <AddOtherController />
         });
     }
@@ -125,6 +149,6 @@ const AddingPage = () => {
             <AddLayoutContent tabs={tabs} />
         </Page>
     )
-};
+}));
 
 export default AddingPage;

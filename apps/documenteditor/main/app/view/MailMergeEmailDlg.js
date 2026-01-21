@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,15 +30,12 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 15.04.15
- * Time: 16:47
  */
 
-define([    'text!documenteditor/main/app/template/MailMergeEmailDlg.template',
+define([
+    'text!documenteditor/main/app/template/MailMergeEmailDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/InputField'
 ], function (contentTemplate) {
     'use strict';
 
@@ -51,7 +48,7 @@ define([    'text!documenteditor/main/app/template/MailMergeEmailDlg.template',
         initialize : function(options) {
             _.extend(this.options, {
                 title: this.textTitle,
-                contentStyle: 'padding: 0;',
+                contentStyle: 'padding: 5px 0 0;',
                 contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
             Common.Views.AdvancedSettingsWindow.prototype.initialize.call(this, this.options);

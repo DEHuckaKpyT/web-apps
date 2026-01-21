@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,27 +32,22 @@
 /**
  *  ChartSettingsDlg.js
  *
- *  Created by Julia Radzhabova on 4/04/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/04/14
  *
  */
 
-define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template',
-    'text!spreadsheeteditor/main/app/template/ChartVertAxis.template',
-    'text!spreadsheeteditor/main/app/template/ChartHorAxis.template',
+define([
+    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template',
+    'text!common/main/lib/template/ChartVertAxis.template',
+    'text!common/main/lib/template/ChartHorAxis.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/InputField',
-    'spreadsheeteditor/main/app/view/CellRangeDialog',
-    'spreadsheeteditor/main/app/view/ChartDataRangeDialog',
-    'spreadsheeteditor/main/app/view/FormatSettingsDialog'
 ], function (contentTemplate, vertTemplate, horTemplate) {
     'use strict';
 
     SSE.Views.ChartSettingsDlg = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
-            contentWidth: 327,
-            contentHeight: 450,
+            contentWidth: 340,
+            contentHeight: 460,
             toggleGroup: 'chart-settings-dlg-group',
             storageName: 'sse-chart-settings-adv-category'
         },
@@ -149,7 +144,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             this.cmbChartTitle = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-chart-title'),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -162,7 +157,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             this.cmbLegendPos = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-legend-pos'),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -179,7 +174,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             this.cmbDataLabels = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-data-labels'),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -219,7 +214,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             this.cmbLines = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-lines'),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -245,6 +240,14 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             }, this));
 
             this.lblLines = $('#chart-dlg-label-lines');
+
+            this.chShowEquation = new Common.UI.CheckBox({
+                el: $('#chart-dlg-chk-show-equation'),
+                labelText: this.textShowEquation
+            }).on('change', _.bind(function (checkbox, state) {
+                if (this.chartSettings)
+                    this.chartSettings.putDisplayTrendlinesEquation(state==='checked');
+            }, this));
 
             // Vertical Axis
             this.cmbMinType = [];
@@ -328,10 +331,6 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                 minWidth: 190
             });
             this.cmbSparkStyle.render($('#spark-dlg-combo-style'));
-            this.cmbSparkStyle.openButton.menu.cmpEl.css({
-                'min-width': 178,
-                'max-width': 178
-            });
             this.cmbSparkStyle.on('click', _.bind(this.onSelectSparkStyle, this));
             this.cmbSparkStyle.openButton.menu.on('show:after', function () {
                 me.cmbSparkStyle.menuPicker.scroller.update({alwaysVisibleY: true});
@@ -427,7 +426,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             this.cmbSparkMinType = new Common.UI.ComboBox({
                 el          : $('#spark-dlg-combo-mintype'),
                 cls         : 'input-group-nr',
-                menuStyle   : 'min-width: 100px;',
+                menuStyle   : 'min-width: 100%;',
                 editable    : false,
                 data        : [
                     {displayValue: this.textAutoEach, value: Asc.c_oAscSparklineAxisMinMax.Individual},
@@ -626,7 +625,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.cmbVertTitle[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-vert-title-' + i),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: me._arrVertTitle,
@@ -639,7 +638,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.cmbVertGrid[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-vert-grid-' + i),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -658,7 +657,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbMinType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-mintype-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 100px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textAuto, value: Asc.c_oAscValAxisRule.auto},
@@ -697,7 +696,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbMaxType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-maxtype-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 100px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textAuto, value: Asc.c_oAscValAxisRule.auto},
@@ -736,7 +735,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbVCrossType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-v-crosstype-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 100px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textAuto, value: Asc.c_oAscCrossesRule.auto},
@@ -821,7 +820,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbVMajorType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-v-major-type-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textNone, value: Asc.c_oAscTickMark.TICK_MARK_NONE},
@@ -840,7 +839,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbVMinorType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-v-minor-type-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textNone, value: Asc.c_oAscTickMark.TICK_MARK_NONE},
@@ -929,7 +928,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.cmbHorTitle[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-hor-title-' + i),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: me._arrHorTitle,
@@ -942,7 +941,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.cmbHorGrid[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-hor-grid-' + i),
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 cls: 'input-group-nr',
                 data: [
@@ -961,7 +960,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbHCrossType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-h-crosstype-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 100px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textAuto, value: Asc.c_oAscCrossesRule.auto},
@@ -1006,7 +1005,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbAxisPos[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-axis-pos-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textOnTickMarks, value: Asc.c_oAscLabelsPosition.byDivisions},
@@ -1033,7 +1032,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbHMajorType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-h-major-type-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textNone, value: Asc.c_oAscTickMark.TICK_MARK_NONE},
@@ -1052,7 +1051,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbHMinorType[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-h-minor-type-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textNone, value: Asc.c_oAscTickMark.TICK_MARK_NONE},
@@ -1070,7 +1069,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.spnMarksInterval[i] = new Common.UI.MetricSpinner({
                 el: $('#chart-dlg-input-marks-interval-' + i),
-                width: 140,
+                width: 'auto',
                 maxValue: 1000000,
                 minValue: 1,
                 step: 1,
@@ -1086,7 +1085,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbHLabelPos[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-h-label-pos-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 140px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textNone, value: Asc.c_oAscTickLabelsPos.TICK_LABEL_POSITION_NONE},
@@ -1104,7 +1103,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
 
             me.spnLabelDist[i] = new Common.UI.MetricSpinner({
                 el: $('#chart-dlg-input-label-dist-' + i),
-                width: 140,
+                width: 'auto',
                 maxValue: 1000,
                 minValue: 0,
                 step: 1,
@@ -1139,7 +1138,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             me.cmbLabelInterval[i] = new Common.UI.ComboBox({
                 el: $('#chart-dlg-combo-label-int-' + i),
                 cls: 'input-group-nr',
-                menuStyle: 'min-width: 100px;',
+                menuStyle: 'min-width: 100%;',
                 editable: false,
                 data: [
                     {displayValue: me.textAuto, value: Asc.c_oAscBetweenLabelsRule.auto},
@@ -1198,6 +1197,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
             this.chMarkers.setVisible(value);
             this.cmbLines.setVisible(value);
             this.lblLines.toggleClass('hidden', !value);
+            this.lblLines.closest('tr').toggleClass('hidden', !value);
 
             if (value) {
                 this.chMarkers.setValue(this.chartSettings.getShowMarker(), true);
@@ -1515,7 +1515,11 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                     var value = props.getSeparator();
                     this.txtSeparator.setValue((value) ? value : '');
 
-                    Common.UI.FocusManager.add(this, [this.cmbChartTitle, this.cmbLegendPos, this.cmbDataLabels, this.chSeriesName, this.chCategoryName, this.chValue, this.txtSeparator, this.cmbLines, this.chMarkers]);
+                    value = this.chartSettings.getDisplayTrendlinesEquation();
+                    this.chShowEquation.setValue(value !== undefined ? !!value : 'indeterminate', true);
+                    this.chShowEquation.setDisabled(value===null, true);
+
+                    Common.UI.FocusManager.add(this, [this.cmbChartTitle, this.cmbLegendPos, this.cmbDataLabels, this.chSeriesName, this.chCategoryName, this.chValue, this.txtSeparator, this.cmbLines, this.chMarkers, this.chShowEquation]);
 
                     // Vertical Axis
                     this.vertAxisProps = props.getVertAxesProps();
@@ -1719,6 +1723,8 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                     Common.UI.warning({msg: this.errorMaxRows});
                 } else if (isvalid == Asc.c_oAscError.ID.MaxDataPointsError)
                     Common.UI.warning({msg: this.errorMaxPoints});
+                else if (isvalid == Asc.c_oAscError.ID.DataRangeError)
+                    Common.UI.warning({msg: this.textInvalidRange});
                 return false;
             } else
                 return true;
@@ -1744,7 +1750,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
         //             me.show();
         //         });
         //
-        //         var xy = me.$window.offset();
+        //         var xy = Common.Utils.getOffset(me.$window);
         //         me.hide();
         //         win.show(xy.left + 160, xy.top + 125);
         //         win.setSettings({
@@ -1785,9 +1791,9 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                     me.show();
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(me.txtSparkDataRange.getValue()) && (me.txtSparkDataRange.checkValidate()==true)) ? me.txtSparkDataRange.getValue() : me.sparkDataRangeValid,
@@ -1813,9 +1819,9 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                     me.show();
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(me.txtSparkDataLocation.getValue()) && (me.txtSparkDataLocation.checkValidate()==true)) ? me.txtSparkDataLocation.getValue() : me.dataLocationRangeValid,
@@ -1832,7 +1838,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
                 lang = Common.Utils.InternalSettings.get("sse-config-lang");
             (!value) && (value = (lang ? parseInt(Common.util.LanguageInfo.getLocalLanguageCode(lang)) : 0x0409));
 
-            var win = (new SSE.Views.FormatSettingsDialog({
+            var win = (new Common.Views.FormatSettingsDialog({
                 api: me.api,
                 handler: function(result, settings) {
                     if (result=='ok' && settings) {
@@ -1864,7 +1870,7 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
         },
 
         close: function () {
-            this.api.asc_onCloseChartFrame();
+            this.api.asc_onCloseFrameEditor();
             Common.Views.AdvancedSettingsWindow.prototype.close.apply(this, arguments);
         },
 
@@ -1992,7 +1998,9 @@ define([    'text!spreadsheeteditor/main/app/template/ChartSettingsDlg.template'
         textHideAxis: 'Hide axis',
         textFormat: 'Label format',
         textBase: 'Base',
-        textLogScale: 'Logarithmic Scale'
+        textLogScale: 'Logarithmic Scale',
+        textTrendlineOptions: 'Trendline options',
+        textShowEquation: 'Display equation on chart'
 
     }, SSE.Views.ChartSettingsDlg || {}));
 });

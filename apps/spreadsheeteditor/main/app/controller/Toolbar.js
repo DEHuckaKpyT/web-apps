@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,41 +32,18 @@
 /**
  *  Toolbar.js
  *
- *  Created by Alexander Yuzhin on 3/31/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 3/31/14
  *
  */
 
 define([
     'core',
     'common/main/lib/component/Window',
-    'common/main/lib/view/CopyWarningDialog',
-    'common/main/lib/view/ImageFromUrlDialog',
-    'common/main/lib/view/SelectFileDlg',
-    'common/main/lib/view/SymbolTableDialog',
-    'common/main/lib/view/OptionsDialog',
-    'common/main/lib/util/define',
     'common/main/lib/view/SearchBar',
+    'spreadsheeteditor/main/app/view/define',
     'spreadsheeteditor/main/app/view/Toolbar',
     'spreadsheeteditor/main/app/collection/TableTemplates',
-    'spreadsheeteditor/main/app/controller/PivotTable',
-    'spreadsheeteditor/main/app/view/HyperlinkSettingsDialog',
-    'spreadsheeteditor/main/app/view/TableOptionsDialog',
-    'spreadsheeteditor/main/app/view/NamedRangeEditDlg',
-    'spreadsheeteditor/main/app/view/NamedRangePasteDlg',
-    'spreadsheeteditor/main/app/view/NameManagerDlg',
-    'spreadsheeteditor/main/app/view/FormatSettingsDialog',
-    'spreadsheeteditor/main/app/view/PageMarginsDialog',
-    'spreadsheeteditor/main/app/view/HeaderFooterDialog',
-    'spreadsheeteditor/main/app/view/PrintTitlesDialog',
-    'spreadsheeteditor/main/app/view/ScaleDialog',
-    'spreadsheeteditor/main/app/view/FormatRulesManagerDlg',
-    'spreadsheeteditor/main/app/view/SlicerAddDialog',
-    'spreadsheeteditor/main/app/view/AdvancedSeparatorDialog',
-    'spreadsheeteditor/main/app/view/CreateSparklineDialog',
-    'spreadsheeteditor/main/app/view/ChartTypeDialog',
-    'spreadsheeteditor/main/app/view/ChartWizardDialog',
-    'spreadsheeteditor/main/app/view/FillSeriesDialog'
+    'spreadsheeteditor/main/app/controller/PivotTable'
 ], function () { 'use strict';
 
     SSE.Controllers.Toolbar = Backbone.Controller.extend(_.extend({
@@ -91,6 +68,10 @@ define([
                     'insert:smartart'   : this.onInsertSmartArt,
                     'smartart:mouseenter': this.mouseenterSmartArt,
                     'smartart:mouseleave': this.mouseleaveSmartArt,
+                    'tab:active': this.onActiveTab,
+                    'tab:click': this.onClickTab,
+                    'tab:collapse': this.onTabCollapse,
+                    'inserttable': this.onInsertTable
                 },
                 'FileMenu': {
                     'menu:hide': me.onFileMenu.bind(me, 'hide'),
@@ -128,6 +109,7 @@ define([
                             Asc.c_oAscFileType.PDFA,
                             Asc.c_oAscFileType.XLTX,
                             Asc.c_oAscFileType.OTS,
+                            Asc.c_oAscFileType.XLSB,
                             Asc.c_oAscFileType.XLSM
                         ];
 
@@ -160,6 +142,9 @@ define([
                 },
                 'LeftMenu': {
                     'search:show': this.searchShow.bind(this)
+                },
+                'PivotTable': {
+                    'insertpivot': this.onInsertPivot
                 }
             });
             Common.NotificationCenter.on('page:settings', _.bind(this.onApiSheetChanged, this));
@@ -168,6 +153,10 @@ define([
                 this.toolbar.collapse();
             }, this));
             Common.NotificationCenter.on('oleedit:close', _.bind(this.onOleEditClose, this));
+            Common.NotificationCenter.on('tab:set-active', _.bind(function(action){
+                this.toolbar.setTab(action);
+                this.onChangeViewMode(null, false, true);
+            }, this));
 
             this.editMode = true;
             this._isAddingShape = false;
@@ -215,7 +204,9 @@ define([
                 wsProps: [],
                 is_lockText: false,
                 is_lockShape: false,
-                isUserProtected: false
+                isUserProtected: false,
+                showPivotTab: false,
+                showTableDesignTab: false
             };
             this.binding = {};
 
@@ -267,7 +258,7 @@ define([
                 if (this.toolbar.btnInsertShape.pressed) this.toolbar.btnInsertShape.toggle(false, true);
                 if (this.toolbar.btnInsertText.pressed) {
                     this.toolbar.btnInsertText.toggle(false, true);
-                    this.toolbar.btnInsertText.menu.clearAll();
+                    this.toolbar.btnInsertText.menu.clearAll(true);
                 }
                 $(document.body).off('mouseup', checkInsertAutoshape);
             };
@@ -282,8 +273,28 @@ define([
         },
 
         setMode: function(mode) {
+            var _main = this.getApplication().getController('Main');
             this.mode = mode;
             this.toolbar.applyLayout(mode);
+            var url = 'https://www.onlyoffice.com/blog/2025/10/docs-9-1-released';
+
+            Common.UI.FeaturesManager.isFeatureEnabled('featuresTips', true) && Common.UI.TooltipManager.addTips({
+                'rtlDirection' : {name: 'sse-help-tip-rtl-dir', placement: 'bottom', text: this.helpRtlDir, header: this.helpRtlDirHeader, target: '#slot-btn-direction', maxwidth: 300, automove: true,
+                                  closable: false, isNewFeature: true, link: {text: _main.textLearnMore, url: url}},
+                'commentFilter' : {name: 'help-tip-comment-filter', placement: 'bottom-right', text: this.helpCommentFilter, header: this.helpCommentFilterHeader, target: '#comments-btn-sort', maxwidth: 300,
+                                  closable: false, isNewFeature: true, link: {text: _main.textLearnMore, url: url}},
+                'tableTab' : {name: 'sse-help-tip-table-tab', placement: 'bottom', offset: {x: Common.UI.isRTL() ? -10 : 10, y: 0}, text: this.helpTableTab, header: this.helpTableTabHeader, target: 'li.ribtab #tabledesign',
+                                automove: true, maxwidth: 300, closable: false, isNewFeature: true, link: {text: _main.textLearnMore, url: url}},
+                'chartElements' : {name: 'help-tip-chart-elements', placement: 'bottom', text: this.helpChartElements, header: this.helpChartElementsHeader, target: '#id-document-holder-btn-chart-element', maxwidth: 300,
+                    automove: true, noHighlight: true, noArrow: true, closable: false, isNewFeature: true, link: {text: _main.textLearnMore, url: url}}
+            });
+            Common.UI.TooltipManager.addTips({
+                'refreshFile' : {text: _main.textUpdateVersion, header: _main.textUpdating, target: '#toolbar', maxwidth: 'none', showButton: false, automove: true, noHighlight: true, noArrow: true, multiple: true},
+                'disconnect' : {text: _main.textConnectionLost, header: _main.textDisconnect, target: '#toolbar', maxwidth: 'none', showButton: false, automove: true, noHighlight: true, noArrow: true, multiple: true},
+                'updateVersion' : {text: _main.errorUpdateVersionOnDisconnect, header: _main.titleUpdateVersion, target: '#toolbar', maxwidth: 600, showButton: false, automove: true, noHighlight: true, noArrow: true, multiple: true},
+                'sessionIdle' : {text: _main.errorSessionIdle, target: '#toolbar', maxwidth: 600, showButton: false, automove: true, noHighlight: true, noArrow: true, multiple: true},
+                'sessionToken' : {text: _main.errorSessionToken, target: '#toolbar', maxwidth: 600, showButton: false, automove: true, noHighlight: true, noArrow: true, multiple: true}
+            });
         },
 
         attachUIEvents: function(toolbar) {
@@ -305,9 +316,7 @@ define([
                 toolbar.cmbNumberFormat.on('show:before',                   _.bind(this.onNumberFormatOpenBefore, this, true));
                 if (toolbar.cmbNumberFormat.cmpEl)
                     toolbar.cmbNumberFormat.cmpEl.on('click', '#id-toolbar-mnu-item-more-formats a', _.bind(this.onNumberFormatSelect, this));
-                toolbar.btnEditChart.on('click',                            _.bind(this.onEditChart, this));
                 toolbar.btnEditChartData.on('click',                        _.bind(this.onEditChartData, this));
-                toolbar.btnEditChartType.on('click',                        _.bind(this.onEditChartType, this));
             } else
             if ( me.appConfig.isEditMailMerge ) {
                 toolbar.btnUndo.on('click',                                 _.bind(this.onUndo, this));
@@ -384,6 +393,7 @@ define([
                 toolbar.btnPaste.on('click',                                _.bind(this.onCopyPaste, this, 'paste'));
                 toolbar.btnCut.on('click',                                  _.bind(this.onCopyPaste, this, 'cut'));
                 toolbar.btnSelectAll.on('click',                            _.bind(this.onSelectAll, this));
+                toolbar.btnReplace.on('click',                              _.bind(this.onReplace, this));
                 toolbar.btnIncFontSize.on('click',                          _.bind(this.onIncreaseFontSize, this));
                 toolbar.btnDecFontSize.on('click',                          _.bind(this.onDecreaseFontSize, this));
                 toolbar.mnuChangeCase.on('item:click',                      _.bind(this.onChangeCase, this));
@@ -402,6 +412,7 @@ define([
                 toolbar.btnBackColor.on('color:select',                     _.bind(this.onBackColorSelect, this));
                 toolbar.btnBackColor.on('eyedropper:start',                 _.bind(this.onEyedropperStart, this));
                 toolbar.btnBackColor.on('eyedropper:end',                  _.bind(this.onEyedropperEnd, this));
+                toolbar.mnuFormatCellFill && toolbar.mnuFormatCellFill.on('click', _.bind(this.onFormatCellFill, this));
                 this.mode.isEdit && Common.NotificationCenter.on('eyedropper:start', _.bind(this.eyedropperStart, this));
                 toolbar.btnBorders.on('click',                              _.bind(this.onBorders, this));
                 if (toolbar.btnBorders.rendered) {
@@ -415,6 +426,8 @@ define([
                 toolbar.btnAlignRight.on('click',                           _.bind(this.onHorizontalAlign, this, AscCommon.align_Right));
                 toolbar.btnAlignJust.on('click',                            _.bind(this.onHorizontalAlign, this, AscCommon.align_Justify));
                 toolbar.btnMerge.on('click',                                _.bind(this.onMergeCellsMenu, this, toolbar.btnMerge.menu, toolbar.btnMerge.menu.items[0]));
+                toolbar.btnTextDir.menu.on('item:click',                    _.bind(this.onTextDirClick, this));
+                toolbar.btnTextDir.menu.on('show:after',                    _.bind(this.onTextDirShowAfter, this));
                 toolbar.btnMerge.menu.on('item:click',                      _.bind(this.onMergeCellsMenu, this));
                 toolbar.btnAlignTop.on('click',                             _.bind(this.onVerticalAlign, this, Asc.c_oAscVAlign.Top));
                 toolbar.btnAlignMiddle.on('click',                          _.bind(this.onVerticalAlign, this, Asc.c_oAscVAlign.Center));
@@ -433,6 +446,7 @@ define([
                 toolbar.btnInsertSlicer.on('click',                         _.bind(this.onInsertSlicerClick, this));
                 toolbar.btnTableTemplate.menu.on('show:after',              _.bind(this.onTableTplMenuOpen, this));
                 toolbar.btnPercentStyle.on('click',                         _.bind(this.onNumberFormat, this));
+                toolbar.btnCommaStyle.on('click',                           _.bind(this.onNumberFormat, this));
                 toolbar.btnCurrencyStyle.on('click',                        _.bind(this.onNumberFormat, this));
                 toolbar.btnDecDecimal.on('click',                           _.bind(this.onDecrement, this));
                 toolbar.btnIncDecimal.on('click',                           _.bind(this.onIncrement, this));
@@ -476,6 +490,8 @@ define([
                 toolbar.btnPageBreak.menu.on('item:click',                  _.bind(this.onPageBreakClick, this));
                 toolbar.btnPageBreak.menu.on('show:after',                  _.bind(this.onPageBreakMenuOpen, this));
                 toolbar.btnImgGroup.menu.on('item:click',                   _.bind(this.onImgGroupSelect, this));
+                toolbar.btnShapesMerge.menu.on('item:click',                _.bind(this.onClickMenuShapesMerge, this));
+                toolbar.btnShapesMerge.menu.on('show:before',                _.bind(this.onBeforeShapesMerge, this));
                 toolbar.btnImgBackward.menu.on('item:click',                _.bind(this.onImgArrangeSelect, this));
                 toolbar.btnImgForward.menu.on('item:click',                 _.bind(this.onImgArrangeSelect, this));
                 toolbar.btnImgAlign.menu.on('item:click',                   _.bind(this.onImgAlignSelect, this));
@@ -485,8 +501,10 @@ define([
                     button.on('click', _.bind(me.onEditHeaderClick, me, undefined));
                 });
                 toolbar.btnPrintTitles.on('click',                          _.bind(this.onPrintTitlesClick, this));
-                toolbar.chPrintGridlines.on('change',                        _.bind(this.onPrintGridlinesChange, this));
-                toolbar.chPrintHeadings.on('change',                         _.bind(this.onPrintHeadingsChange, this));
+                toolbar.chPrintGridlines.on('change',                       _.bind(this.onPrintGridlinesChange, this));
+                toolbar.chPrintHeadings.on('change',                        _.bind(this.onPrintHeadingsChange, this));
+                toolbar.btnRtlSheet.on('click',                             _.bind(this.onRtlSheetClick, this));
+
                 if (toolbar.btnCondFormat.rendered) {
                     toolbar.btnCondFormat.menu.on('show:before',            _.bind(this.onShowBeforeCondFormat, this, this.toolbar, 'toolbar'));
                 }
@@ -496,6 +514,9 @@ define([
                 Common.Gateway.on('insertimage',                      _.bind(this.insertImage, this));
 
                 this.onSetupCopyStyleButton();
+                this.onBtnChangeState('undo:disabled', toolbar.btnUndo, toolbar.btnUndo.isDisabled());
+                this.onBtnChangeState('redo:disabled', toolbar.btnRedo, toolbar.btnRedo.isDisabled());
+                this.onBtnChangeState('save:disabled', toolbar.btnSave, toolbar.btnSave.isDisabled());
             }
         },
 
@@ -511,6 +532,8 @@ define([
                     Common.NotificationCenter.on('storage:image-load',          _.bind(this.openImageFromStorage, this));
                     Common.NotificationCenter.on('storage:image-insert',        _.bind(this.insertImageFromStorage, this));
                     this.api.asc_registerCallback('asc_onSelectionMathChanged',   _.bind(this.onApiMathChanged, this));
+                } else if (config.isEditDiagram) {
+                    this.api.asc_registerCallback('asc_onShowProtectedChartPopup',   _.bind(this.onShowProtectedChartPopup, this));
                 }
                 this.api.asc_registerCallback('asc_onInitEditorStyles',     _.bind(this.onApiInitEditorStyles, this));
                 this.api.asc_registerCallback('asc_onCoAuthoringDisconnect',_.bind(this.onApiCoAuthoringDisconnect, this));
@@ -529,6 +552,11 @@ define([
                 this.api.asc_registerCallback('asc_onSelectionChanged',     _.bind(this.onApiSelectionChangedRestricted, this));
                 Common.NotificationCenter.on('protect:wslock',              _.bind(this.onChangeProtectSheet, this));
             }
+            if ( !config.isEditDiagram  && !config.isEditMailMerge  && !config.isEditOle )
+                this.api.asc_registerCallback('onPluginToolbarMenu', _.bind(this.onPluginToolbarMenu, this));
+                this.api.asc_registerCallback('onPluginToolbarCustomMenuItems', _.bind(this.onPluginToolbarCustomMenuItems, this));
+                this.api.asc_registerCallback('onPluginUpdateToolbarMenu', _.bind(this.onPluginUpdateToolbarMenu, this));
+                Common.NotificationCenter.on('document:ready', _.bind(this.onDocumentReady, this));
         },
 
         // onNewDocument: function(btn, e) {
@@ -581,7 +609,7 @@ define([
             if (this.api) {
                 var isModified = this.api.asc_isDocumentCanSave();
                 var isSyncButton = this.toolbar.btnCollabChanges && this.toolbar.btnCollabChanges.cmpEl.hasClass('notify');
-                if (!isModified && !isSyncButton && !this.toolbar.mode.forcesave)
+                if (!isModified && !isSyncButton && !this.toolbar.mode.forcesave && !this.toolbar.mode.canSaveDocumentToBinary)
                     return;
 
                 this.api.asc_Save();
@@ -642,6 +670,10 @@ define([
 
             Common.NotificationCenter.trigger('edit:complete', this.toolbar);
             Common.component.Analytics.trackEvent('ToolBar', 'Select All');
+        },
+
+        onReplace: function(e) {
+            this.getApplication().getController('LeftMenu').onShortcut('replace');
         },
 
         onIncreaseFontSize: function(e) {
@@ -771,8 +803,11 @@ define([
             Common.component.Analytics.trackEvent('ToolBar', 'Background Color');
         },
 
+        onFormatCellFill: function(picker, color) {
+            this.getApplication().getController('RightMenu').onRightMenuOpen(Common.Utils.documentSettingsType.Cell);
+        },
+
         onNewBorderColor: function(picker, color) {
-            this.toolbar.btnBorders.menu.hide();
             this.toolbar.btnBorders.toggle(false, true);
             this.toolbar.mnuBorderColorPicker.addNewColor();
         },
@@ -796,7 +831,7 @@ define([
         onBorders: function(btn) {
             var menuItem;
 
-            _.each(btn.menu.items, function(item) {
+            _.each(btn.menu.getItems(true), function(item) {
                 if (btn.options.borderId == item.options.borderId) {
                     menuItem = item;
                     return false;
@@ -846,7 +881,8 @@ define([
 
                 Common.NotificationCenter.trigger('edit:complete', me.toolbar);
                 Common.component.Analytics.trackEvent('ToolBar', 'Borders');
-            }
+            } else if (item.value==='options')
+                this.getApplication().getController('RightMenu').onRightMenuOpen(Common.Utils.documentSettingsType.Cell);
         },
 
         onBordersWidth: function(menu, item, state) {
@@ -942,6 +978,15 @@ define([
             Common.component.Analytics.trackEvent('ToolBar', 'Merge cells');
         },
 
+        onTextDirClick: function(menu, item) {
+            this.api && this.api.asc_setCellReadingOrder(item.value);
+            Common.NotificationCenter.trigger('edit:complete', this.toolbar);
+        },
+
+        onTextDirShowAfter: function(menu, item) {
+            Common.UI.TooltipManager.closeTip('rtlDirection');
+        },
+
         onWrap: function(btn, e) {
             this._state.wrap = undefined;
             if (this.api)
@@ -953,6 +998,11 @@ define([
 
         onTextOrientationMenu: function(menu, item) {
                 var angle = 0;
+
+                if (item.value==='options') {
+                    this.getApplication().getController('RightMenu').onRightMenuOpen(Common.Utils.documentSettingsType.Cell);
+                    return;
+                }
 
                 switch (item.value) {
                     case 'countcw':     angle =  45;    break;
@@ -998,10 +1048,6 @@ define([
                                     me.api.asc_addImageDrawingObject([checkUrl]);
 
                                     Common.component.Analytics.trackEvent('ToolBar', 'Image');
-                                } else {
-                                    Common.UI.warning({
-                                        msg: this.textEmptyImgUrl
-                                    });
                                 }
                             }
 
@@ -1107,56 +1153,13 @@ define([
             Common.component.Analytics.trackEvent('ToolBar', 'Add Hyperlink');
         },
 
-        onEditChart: function(btn) {
-            if (!this.editMode) return;
-            var me = this, info = me.api.asc_getCellInfo();
-            var selectType = info.asc_getSelectionType();
-            if (selectType !== Asc.c_oAscSelectionType.RangeImage) {
-                var win, props;
-                if (me.api){
-                    props = me.api.asc_getChartObject();
-                    var selectedObjects = me.api.asc_getGraphicObjectProps(),
-                        imageSettings = null;
-                    for (var i = 0; i < selectedObjects.length; i++) {
-                        if (selectedObjects[i].asc_getObjectType() == Asc.c_oAscTypeSelectElement.Image) {
-                            var elValue = selectedObjects[i].asc_getObjectValue();
-                            if ( elValue.asc_getChartProperties() )
-                                imageSettings = elValue;
-                        }
-                    }
-                    if (props) {
-                        var ischartedit = ( me.toolbar.mode.isEditDiagram || selectType === Asc.c_oAscSelectionType.RangeChart || selectType === Asc.c_oAscSelectionType.RangeChartText);
-
-                        (new SSE.Views.ChartSettingsDlg(
-                            {
-                                chartSettings: props,
-                                imageSettings: imageSettings,
-                                // isDiagramMode: me.toolbar.mode.isEditDiagram,
-                                isChart: true,
-                                api: me.api,
-                                handler: function(result, value) {
-                                    if (result == 'ok') {
-                                        if (me.api) {
-                                            (ischartedit) ? me.api.asc_editChartDrawingObject(value.chartSettings) : me.api.asc_addChartDrawingObject(value.chartSettings);
-                                            if (value.imageSettings)
-                                                me.api.asc_setGraphicObjectProps(value.imageSettings);
-                                        }
-                                    }
-                                    Common.NotificationCenter.trigger('edit:complete', me.toolbar);
-                                }
-                            })).show();
-                    }
-                }
-            }
-        },
-
         onEditChartData: function(btn) {
-            if (!this.editMode) return;
+            if (!this.editMode || !Common.Controllers.LaunchController.isScriptLoaded()) return;
 
             var me = this;
             var props;
             if (me.api){
-                props = me.api.asc_getChartObject();
+                props = me.api.asc_getFrameChartSettings();
                 if (props) {
                     me._isEditRanges = true;
                     props.startEdit();
@@ -1179,35 +1182,6 @@ define([
             }
         },
 
-        onEditChartType: function(btn) {
-            if (!this.editMode) return;
-
-            var me = this;
-            var props;
-            if (me.api){
-                props = me.api.asc_getChartObject();
-                if (props) {
-                    me._isEditType = true;
-                    props.startEdit();
-                    var win = new SSE.Views.ChartTypeDialog({
-                        chartSettings: props,
-                        api: me.api,
-                        handler: function(result, value) {
-                            if (result == 'ok') {
-                                props.endEdit();
-                                me._isEditType = false;
-                            }
-                            Common.NotificationCenter.trigger('edit:complete', me);
-                        }
-                    }).on('close', function() {
-                        me._isEditType && props.cancelEdit();
-                        me._isEditType = false;
-                    });
-                    win.show();
-                }
-            }
-        },
-
         onSelectChart: function(group, type) {
             if (!this.editMode) return;
             var me = this,
@@ -1217,7 +1191,7 @@ define([
             if (me.api) {
                 var win, props;
                 var ischartedit = ( seltype == Asc.c_oAscSelectionType.RangeChart || seltype == Asc.c_oAscSelectionType.RangeChartText);
-                props = me.api.asc_getChartObject(true); // don't lock chart object
+                props = me.api.asc_getChartSettings(true); // don't lock chart object
                 if (props) {
                     if (ischartedit)
                         props.changeType(type);
@@ -1311,12 +1285,12 @@ define([
         },
 
         onBtnInsertTextClick: function(btn, e) {
-            btn.menu.items.forEach(function(item) {
+            btn.menu.getItems(true).forEach(function(item) {
                 if(item.value == btn.options.textboxType) 
                 item.setChecked(true);
             });
             if(!this.toolbar.btnInsertText.pressed) {
-                this.toolbar.btnInsertText.menu.clearAll();
+                this.toolbar.btnInsertText.menu.clearAll(true);
             } 
             this.onInsertText(btn.options.textboxType, btn, e);
         },
@@ -1329,7 +1303,7 @@ define([
             if(newType != oldType){
                 this.toolbar.btnInsertText.changeIcon({
                     next: e.options.iconClsForMainBtn,
-                    curr: this.toolbar.btnInsertText.menu.items.filter(function(item){return item.value == oldType})[0].options.iconClsForMainBtn
+                    curr: this.toolbar.btnInsertText.menu.getItems(true).filter(function(item){return item.value == oldType})[0].options.iconClsForMainBtn
                 });
                 this.toolbar.btnInsertText.updateHint([e.caption, this.views.Toolbar.prototype.tipInsertText]);
                 this.toolbar.btnInsertText.options.textboxType = newType;
@@ -1522,7 +1496,7 @@ define([
                 value = me.api.asc_getLocale();
             (!value) && (value = ((me.toolbar.mode.lang) ? parseInt(Common.util.LanguageInfo.getLocalLanguageCode(me.toolbar.mode.lang)) : 0x0409));
 
-            (new SSE.Views.FormatSettingsDialog({
+            (new Common.Views.FormatSettingsDialog({
                 api: me.api,
                 handler: function(result, settings) {
                     if (settings) {
@@ -1734,8 +1708,8 @@ define([
         onColorSchemaShow: function(menu) {
             if (this.api) {
                 var value = this.api.asc_GetCurrentColorSchemeIndex();
-                var item = _.find(menu.items, function(item) { return item.value == value; });
-                (item) ? item.setChecked(true) : menu.clearAll();
+                var item = _.find(menu.getItems(true), function(item) { return item.value == value; });
+                (item) ? item.setChecked(true) : menu.clearAll(true);
             }
         },
 
@@ -2041,7 +2015,6 @@ define([
                 this.applyFormulaSettings();
             }
 
-            this.api.asc_registerCallback('asc_onShowChartDialog',          _.bind(this.onApiChartDblClick, this));
             this.api.asc_registerCallback('asc_onCanUndoChanged',           _.bind(this.onApiCanRevert, this, 'undo'));
             this.api.asc_registerCallback('asc_onCanRedoChanged',           _.bind(this.onApiCanRevert, this, 'redo'));
             this.api.asc_registerCallback('asc_onEditCell',                 _.bind(this.onApiEditCell, this));
@@ -2119,7 +2092,7 @@ define([
                                 (selectionType === Asc.c_oAscSelectionType.RangeCol) && !me.toolbar.btnAddCell.menu.items[3].isDisabled() && me.api.asc_insertCells(Asc.c_oAscInsertOptions.InsertColumns);
                                 Common.NotificationCenter.trigger('edit:complete', me.toolbar);
                             } else {
-                                var items = me.toolbar.btnAddCell.menu.items,
+                                var items = me.toolbar.btnAddCell.menu.getItems(true),
                                     arr = [],
                                     enabled = false;
                                 for (var i=0; i<4; i++) {
@@ -2149,7 +2122,7 @@ define([
                                 me.api.asc_deleteCells(selectionType === Asc.c_oAscSelectionType.RangeRow ? Asc.c_oAscDeleteOptions.DeleteRows :Asc.c_oAscDeleteOptions.DeleteColumns );
                                 Common.NotificationCenter.trigger('edit:complete', me.toolbar);
                             } else {
-                                var items = me.toolbar.btnDeleteCell.menu.items,
+                                var items = me.toolbar.btnDeleteCell.menu.getItems(true),
                                     arr = [],
                                     enabled = false;
                                 for (var i=0; i<4; i++) {
@@ -2181,11 +2154,13 @@ define([
             Common.NotificationCenter.on('cells:range', _.bind(this.onCellsRange, this));
         },
 
-        onChangeViewMode: function(item, compact) {
+        onChangeViewMode: function(item, compact, suppressSave) {
             this.toolbar.setFolded(compact);
             this.toolbar.fireEvent('view:compact', [this, compact]);
+            compact && this.onTabCollapse();
 
-            Common.localStorage.setBool('sse-compact-toolbar', compact);
+            !suppressSave && Common.localStorage.setBool(this.mode.isEdit ? "sse-compact-toolbar" : "sse-view-compact-toolbar", compact);
+            
             Common.NotificationCenter.trigger('layout:changed', 'toolbar');
             Common.NotificationCenter.trigger('edit:complete', this.toolbar);
         },
@@ -2209,7 +2184,6 @@ define([
                     restoreHeight: 300,
                     groups: new Common.UI.DataViewGroupStore(),
                     style: 'max-height: 300px;',
-                    cls: 'classic',
                     store: me.getCollection('TableTemplates'),
                     itemTemplate: _.template('<div class="item-template"><img src="<%= imageUrl %>" id="<%= id %>" style="width:60px;height:44px;"></div>'),
                     delayRenderTips: true
@@ -2530,10 +2504,6 @@ define([
             this.editMode = false;
         },
 
-        onApiChartDblClick: function() {
-            this.onEditChart(this.btnInsertChart);
-        },
-
         onApiCanRevert: function(which, can) {
             if (which=='undo') {
                 if (this._state.can_undo !== can) {
@@ -2555,19 +2525,23 @@ define([
         },
 
         onApiEditCell: function(state) {
+            this.onEditCell(state);
+        },
+
+        onEditCell: function(state, keepState) {
             if ($('.asc-window.enable-key-events:visible').length>0) return;
 
             var toolbar = this.toolbar;
             if (toolbar.mode.isEditDiagram || toolbar.mode.isEditMailMerge) {
                 var is_cell_edited = (state == Asc.c_oAscCellEditorState.editStart);
-                toolbar.lockToolbar(Common.enumLock.editCell, state == Asc.c_oAscCellEditorState.editStart, {array: [toolbar.btnDecDecimal,toolbar.btnIncDecimal,toolbar.cmbNumberFormat, toolbar.btnEditChartData, toolbar.btnEditChartType]});
+                toolbar.lockToolbar(Common.enumLock.editCell, state == Asc.c_oAscCellEditorState.editStart, {array: [toolbar.btnDecDecimal,toolbar.btnIncDecimal,toolbar.cmbNumberFormat, toolbar.btnEditChartData]});
             } else if (toolbar.mode.isEditOle) {
                 if (state == Asc.c_oAscCellEditorState.editStart || state == Asc.c_oAscCellEditorState.editEnd) {
                     var is_cell_edited = (state == Asc.c_oAscCellEditorState.editStart);
                     toolbar.lockToolbar(Common.enumLock.editCell, state == Asc.c_oAscCellEditorState.editStart, {array: [toolbar.cmbNumberFormat, toolbar.btnWrap, toolbar.btnMerge, toolbar.btnBackColor,
                                         toolbar.btnBorders, toolbar.btnTableTemplate, toolbar.btnHorizontalAlign, toolbar.btnVerticalAlign],
                                         merge: true,
-                                        clear: [Common.enumLock.editFormula, Common.enumLock.editText]});
+                                        clear: !keepState ? [Common.enumLock.editFormula, Common.enumLock.editText] : undefined});
                     (is_cell_edited) ? Common.util.Shortcuts.suspendEvents('command+l, ctrl+l, command+shift+l, ctrl+shift+l') :
                                        Common.util.Shortcuts.resumeEvents('command+l, ctrl+l, command+shift+l, ctrl+shift+l');
                 } else {
@@ -2590,7 +2564,7 @@ define([
                             toolbar.btnNamedRange.menu.items[1]
                         ].concat(toolbar.itemsNamedRange),
                         merge: true,
-                        clear: [Common.enumLock.editFormula, Common.enumLock.editText]
+                        clear: !keepState ? [Common.enumLock.editFormula, Common.enumLock.editText] : undefined
                 });
 
                 var hkComments = Common.Utils.isMac ? 'command+alt+a' : 'alt+h';
@@ -2631,7 +2605,8 @@ define([
 
             var currentSheet = this.api.asc_getActiveWorksheetIndex(),
                 props = this.api.asc_getPageOptions(currentSheet),
-                opt = props.asc_getPageSetup();
+                opt = props.asc_getPageSetup(),
+                params  = this.api.asc_getSheetViewSettings();
 
             this.onApiPageOrient(opt.asc_getOrientation());
             this.onApiPageSize(opt.asc_getWidth(), opt.asc_getHeight());
@@ -2639,6 +2614,7 @@ define([
             this.onChangeScaleSettings(opt.asc_getFitToWidth(),opt.asc_getFitToHeight(),opt.asc_getScale());
             this.onApiGridLines(props.asc_getGridLines());
             this.onApiHeadings(props.asc_getHeadings());
+            this.onApiRtlSheet(params.asc_getRightToLeft());
 
             this.api.asc_isLayoutLocked(currentSheet) ? this.onApiLockDocumentProps(currentSheet) : this.onApiUnLockDocumentProps(currentSheet);
             this.toolbar.lockToolbar(Common.enumLock.printAreaLock, this.api.asc_isPrintAreaLocked(currentSheet), {array: [this.toolbar.btnPrintArea]});
@@ -2658,6 +2634,10 @@ define([
             this.toolbar.chPrintHeadings.setValue(checked, true);
         },
 
+        onApiRtlSheet: function (checked) {
+            this.toolbar.btnRtlSheet.toggle(!!checked, true);
+        },
+
         onApiPageSize: function(w, h) {
             if (this._state.pgorient===undefined) return;
 
@@ -2665,8 +2645,8 @@ define([
                 Math.abs(this._state.pgsize[1] - h) > 0.1) {
                 this._state.pgsize = [w, h];
                 if (this.toolbar.mnuPageSize) {
-                    this.toolbar.mnuPageSize.clearAll();
-                    _.each(this.toolbar.mnuPageSize.items, function(item){
+                    this.toolbar.mnuPageSize.clearAll(true);
+                    _.each(this.toolbar.mnuPageSize.getItems(true), function(item){
                         if (item.value && typeof(item.value) == 'object' &&
                             Math.abs(item.value[0] - w) < 0.1 && Math.abs(item.value[1] - h) < 0.1) {
                             item.setChecked(true);
@@ -2689,8 +2669,8 @@ define([
                     Math.abs(this._state.pgmargins[3] - right) > 0.1) {
                     this._state.pgmargins = [top, left, bottom, right];
                     if (this.toolbar.btnPageMargins.menu) {
-                        this.toolbar.btnPageMargins.menu.clearAll();
-                        _.each(this.toolbar.btnPageMargins.menu.items, function(item){
+                        this.toolbar.btnPageMargins.menu.clearAll(true);
+                        _.each(this.toolbar.btnPageMargins.menu.getItems(true), function(item){
                             if (item.value && typeof(item.value) == 'object' &&
                                 Math.abs(item.value[0] - top) < 0.1 && Math.abs(item.value[1] - left) < 0.1 &&
                                 Math.abs(item.value[2] - bottom) < 0.1 && Math.abs(item.value[3] - right) < 0.1) {
@@ -2722,8 +2702,8 @@ define([
                     } else {
                         this.toolbar.setValueCustomScale(this.api.asc_getPageOptions().asc_getPageSetup().asc_getScale());
                     }
-                    this.toolbar.menuWidthScale.clearAll();
-                    this.toolbar.menuWidthScale.items.forEach(function (item) {
+                    this.toolbar.menuWidthScale.clearAll(true);
+                    this.toolbar.menuWidthScale.getItems(true).forEach(function (item) {
                         if (item.value === width) {
                             item.setChecked(true);
                             isWidth = true;
@@ -2733,8 +2713,8 @@ define([
                     if (!isWidth) {
                         this.toolbar.menuWidthScale.items[11].setChecked(true);
                     }
-                    this.toolbar.menuHeightScale.clearAll();
-                    this.toolbar.menuHeightScale.items.forEach(function (item) {
+                    this.toolbar.menuHeightScale.clearAll(true);
+                    this.toolbar.menuHeightScale.getItems(true).forEach(function (item) {
                         if (item.value === height) {
                             item.setChecked(true);
                             isHeight = true;
@@ -2817,7 +2797,7 @@ define([
 
                     btnSubscript.toggle(index>-1, true);
                     if (index < 0) {
-                        btnSubscript.menu.clearAll();
+                        btnSubscript.menu.clearAll(true);
                     } else {
                         btnSubscript.menu.items[index].setChecked(true);
                         if ( btnSubscript.rendered && btnSubscript.$icon ) {
@@ -2866,19 +2846,7 @@ define([
                             (type1!='object' && this._state.clrtext!==undefined && this._state.clrtext.indexOf(clr)<0 )) {
 
                             this.toolbar.btnTextColor.setAutoColor(false);
-                            if (_.isObject(clr)) {
-                                var isselected = false;
-                                for (var i = 0; i < 10; i++) {
-                                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                        fontColorPicker.select(clr, true);
-                                        isselected = true;
-                                        break;
-                                    }
-                                }
-                                if (!isselected) fontColorPicker.clearSelection();
-                            } else {
-                                fontColorPicker.select(clr, true);
-                            }
+                            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
                             this._state.clrtext = clr;
                         }
                     }
@@ -2888,7 +2856,32 @@ define([
 
         },
 
+        onApiTextDirection: function (xfs, selectionType) {
+            const toolbar = this.toolbar;
+            const readingOrder = xfs.asc_getReadingOrder();
+            const iconMap = {
+                [Asc.c_oReadingOrderTypes.Context]: 'btn-context',
+                [Asc.c_oReadingOrderTypes.LTR]: 'btn-ltr',
+                [Asc.c_oReadingOrderTypes.RTL]: 'btn-rtl'
+            };
+
+            const iconClass = iconMap[readingOrder] || 'btn-ltr';
+            const prevIconClass = toolbar.btnTextDir.options.icls;
+
+            if (prevIconClass !== iconClass) {
+                toolbar.btnTextDir.changeIcon({
+                    next: iconClass,
+                    curr: prevIconClass
+                });
+                toolbar.btnTextDir.options.icls = iconClass;
+            }
+             toolbar.btnTextDir.menu.items[2].setDisabled(selectionType === Asc.c_oAscSelectionType.RangeShape || selectionType === Asc.c_oAscSelectionType.RangeShapeText
+                || selectionType === Asc.c_oAscSelectionType.RangeChartText || selectionType === Asc.c_oAscSelectionType.RangeChart
+            )
+        },
+
         onApiSelectionChanged: function(info) {
+            var toolbar = this.toolbar
             if (!this.editMode || $('.asc-window.enable-key-events:visible').length>0 || !info) return;
             if ( this.toolbar.mode.isEditDiagram )
                 return this.onApiSelectionChanged_DiagramEditor(info); else
@@ -2904,6 +2897,7 @@ define([
                 toolbar = this.toolbar,
                 xfs = info.asc_getXfs(),
                 val, need_disable = false;
+            this.onApiTextDirection(xfs, selectionType);
 
             /* read font name */
             Common.NotificationCenter.trigger('fonts:change', xfs);
@@ -2931,7 +2925,7 @@ define([
 
             need_disable = (selectionType === Asc.c_oAscSelectionType.RangeCells || selectionType === Asc.c_oAscSelectionType.RangeCol ||
                 selectionType === Asc.c_oAscSelectionType.RangeRow || selectionType === Asc.c_oAscSelectionType.RangeMax);
-            toolbar.lockToolbar(Common.enumLock.selRange, need_disable, { array: [toolbar.btnImgAlign, toolbar.btnImgBackward, toolbar.btnImgForward, toolbar.btnImgGroup]});
+            toolbar.lockToolbar(Common.enumLock.selRange, need_disable, { array: [toolbar.btnImgAlign, toolbar.btnImgBackward, toolbar.btnImgForward, toolbar.btnImgGroup, toolbar.btnShapesMerge]});
 
             var cangroup = this.api.asc_canGroupGraphicsObjects(),
                 canungroup = this.api.asc_canUnGroupGraphicsObjects();
@@ -2943,6 +2937,8 @@ define([
             var objcount = this.api.asc_getSelectedDrawingObjectsCount();
             toolbar.btnImgAlign.menu.items[7].setDisabled(objcount<3);
             toolbar.btnImgAlign.menu.items[8].setDisabled(objcount<3);
+ 
+            toolbar.lockToolbar(Common.enumLock.cantMergeShape, !this.api.asc_canMergeSelectedShapes(), { array: [toolbar.btnShapesMerge] });
 
             // disable on protected sheet
             // lock formatting controls in cell with FormatCells protection or in shape and Objects protection
@@ -2962,10 +2958,10 @@ define([
 
             toolbar.lockToolbar(Common.enumLock.pageBreakLock, this.api.asc_GetPageBreaksDisableType(this.api.asc_getActiveWorksheetIndex())===Asc.c_oAscPageBreaksDisableType.all, {array: [toolbar.btnPageBreak]});
 
-            if (editOptionsDisabled) return;
+            // if (editOptionsDisabled) return;
 
             /* read font params */
-            if (!toolbar.mode.isEditMailMerge && !toolbar.mode.isEditDiagram && !toolbar.mode.isEditOle) {
+            if (!editOptionsDisabled && !toolbar.mode.isEditMailMerge && !toolbar.mode.isEditDiagram && !toolbar.mode.isEditOle) {
                 val = xfs.asc_getFontBold();
                 if (this._state.bold !== val) {
                     toolbar.btnBold.toggle(val === true, true);
@@ -2996,7 +2992,7 @@ define([
 
                     btnSubscript.toggle(index>-1, true);
                     if (index < 0) {
-                        btnSubscript.menu.clearAll();
+                        btnSubscript.menu.clearAll(true);
                     } else {
                         btnSubscript.menu.items[index].setChecked(true);
                         if ( btnSubscript.rendered ) {
@@ -3017,7 +3013,7 @@ define([
                 fontColorPicker      = this.toolbar.mnuTextColorPicker,
                 paragraphColorPicker = this.toolbar.mnuBackColorPicker;
 
-            if (!fontColorPicker.isDummy) {
+            if (!editOptionsDisabled && !fontColorPicker.isDummy) {
                 color = xfs.asc_getFontColor();
                 if (color) {
                     if (color.get_auto()) {
@@ -3039,19 +3035,7 @@ define([
                             (type1!='object' && this._state.clrtext!==undefined && this._state.clrtext.indexOf(clr)<0 )) {
 
                             toolbar.btnTextColor.setAutoColor(false);
-                            if (_.isObject(clr)) {
-                                var isselected = false;
-                                for (var i = 0; i < 10; i++) {
-                                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                        fontColorPicker.select(clr, true);
-                                        isselected = true;
-                                        break;
-                                    }
-                                }
-                                if (!isselected) fontColorPicker.clearSelection();
-                            } else {
-                                fontColorPicker.select(clr, true);
-                            }
+                            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
                             this._state.clrtext = clr;
                         }
                     }
@@ -3060,7 +3044,7 @@ define([
             }
 
             /* read cell background color */
-            if (!paragraphColorPicker.isDummy) {
+            if (!editOptionsDisabled && !paragraphColorPicker.isDummy) {
                 color = xfs.asc_getFillColor();
                 if (color && !color.get_auto()) {
                     if (color.get_type() == Asc.c_oAscColor.COLOR_TYPE_SCHEME) {
@@ -3078,19 +3062,7 @@ define([
                     (clr.effectValue!==this._state.clrback.effectValue || this._state.clrback.color.indexOf(clr.color)<0)) ||
                     (type1!='object' && this._state.clrback!==undefined && this._state.clrback.indexOf(clr)<0 )) {
 
-                    if (_.isObject(clr)) {
-                        var isselected = false;
-                        for (i = 0; i < 10; i++) {
-                            if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                paragraphColorPicker.select(clr, true);
-                                isselected = true;
-                                break;
-                            }
-                        }
-                        if (!isselected) paragraphColorPicker.clearSelection();
-                    } else {
-                        paragraphColorPicker.select(clr, true);
-                    }
+                    Common.Utils.ThemeColor.selectPickerColorByEffect(clr, paragraphColorPicker);
                     this._state.clrback = clr;
                 }
                 this._state.clrshd_asccolor = color;
@@ -3101,7 +3073,7 @@ define([
                 toolbar.btnInsertChart.updateHint(in_chart ? toolbar.tipChangeChart : toolbar.tipInsertChart);
                 this._state.in_chart = in_chart;
             }
-            if (in_chart) return;
+            // if (in_chart) return;
 
             if (!toolbar.mode.isEditDiagram)
             {
@@ -3110,7 +3082,7 @@ define([
 
                 var filterInfo = info.asc_getAutoFilterInfo(),
                     formatTableInfo = info.asc_getFormatTableInfo();
-                if (!toolbar.mode.isEditMailMerge) {
+                if (!editOptionsDisabled && !in_chart && !toolbar.mode.isEditMailMerge) {
                     /* read cell horizontal align */
                     var fontparam = xfs.asc_getHorAlign();
                     if (this._state.pralign !== fontparam) {
@@ -3188,7 +3160,7 @@ define([
                 }
                 need_disable =  this._state.controlsdisabled.filters || (val===null);
                 toolbar.lockToolbar(Common.enumLock.ruleFilter, need_disable,
-                            { array: toolbar.btnsSetAutofilter.concat(toolbar.btnCustomSort, toolbar.btnTableTemplate, toolbar.btnInsertTable, toolbar.btnRemoveDuplicates, toolbar.btnDataValidation) });
+                            { array: toolbar.btnsSetAutofilter.concat(toolbar.btnCustomSort, toolbar.btnTableTemplate, toolbar.btnInsertTable, toolbar.btnDataValidation).concat(toolbar.btnsRemoveDuplicates)});
 
                 toolbar.lockToolbar(Common.enumLock.tableHasSlicer, filterInfo && filterInfo.asc_getIsSlicerAdded(), { array: toolbar.btnsSetAutofilter });
 
@@ -3222,105 +3194,128 @@ define([
                 this._state.multiselect = info.asc_getMultiselect();
                 toolbar.lockToolbar(Common.enumLock.multiselect, this._state.multiselect, { array: [toolbar.btnTableTemplate, toolbar.btnInsertHyperlink, toolbar.btnInsertTable]});
 
-                this._state.inpivot = !!info.asc_getPivotTableInfo();
-                toolbar.lockToolbar(Common.enumLock.editPivot, this._state.inpivot, { array: toolbar.btnsSetAutofilter.concat(toolbar.btnMerge, toolbar.btnInsertHyperlink, toolbar.btnInsertTable, toolbar.btnRemoveDuplicates, toolbar.btnDataValidation)});
+                var intabledesign = info.asc_getFormatTableInfo();
+                if (this._state.intabledesign !== intabledesign) {
+                    if ( !intabledesign && this.toolbar.isTabActive('tabledesign') )
+                        this.toolbar.setTab('home');
+                    this.toolbar.setVisible('tabledesign', !!intabledesign);
+                    if (intabledesign && this._state.showTableDesignTab) {
+                        this.toolbar.setTab('tabledesign');
+                    }
+                    this._state.intabledesign = intabledesign;
+                }
+
+                var inpivot = !!info.asc_getPivotTableInfo();
+                if (this._state.inpivot !== inpivot) {
+                    if ( !inpivot && this.toolbar.isTabActive('pivot') )
+                        this.toolbar.setTab('home');
+                    this.toolbar.setVisible('pivot', !!inpivot);
+                    if (inpivot && this._state.showPivotTab)
+                        this.toolbar.setTab('pivot');
+                    this._state.inpivot = inpivot;
+                }
+                toolbar.lockToolbar(Common.enumLock.editPivot, this._state.inpivot, { array: toolbar.btnsSetAutofilter.concat(toolbar.btnMerge, toolbar.btnInsertHyperlink, toolbar.btnInsertTable, toolbar.btnDataValidation).concat(toolbar.btnsRemoveDuplicates)});
                 toolbar.lockToolbar(Common.enumLock.noSlicerSource, !(this._state.inpivot || formatTableInfo), { array: [toolbar.btnInsertSlicer]});
 
                 need_disable = !this.appConfig.canModifyFilter;
                 toolbar.lockToolbar(Common.enumLock.cantModifyFilter, need_disable, { array: toolbar.btnsSetAutofilter.concat(toolbar.btnsSortDown, toolbar.btnsSortUp, toolbar.btnCustomSort, toolbar.btnTableTemplate,
-                                                                                          toolbar.btnClearStyle.menu.items[0], toolbar.btnClearStyle.menu.items[2], toolbar.btnInsertTable, toolbar.btnRemoveDuplicates, toolbar.btnDataValidation)});
-
+                                                                                          toolbar.btnClearStyle.menu.items[0], toolbar.btnClearStyle.menu.items[2], toolbar.btnInsertTable, toolbar.btnDataValidation).concat(toolbar.btnsRemoveDuplicates).concat(toolbar.btnsTableDesign)});
             }
 
-            val = xfs.asc_getNumFormatInfo();
-            if (val) {
-				this._state.numformat = xfs.asc_getNumFormat();
-				this._state.numformatinfo = val;
-				val = val.asc_getType();
-				if (this._state.numformattype !== val) {
-                    toolbar.cmbNumberFormat.setValue(val, toolbar.txtCustom);
-                    this._state.numformattype = val;
-				}
-            }
-
-            val = xfs.asc_getAngle();
-            if (this._state.angle !== val) {
-                toolbar.btnTextOrient.menu.clearAll();
-                switch(val) {
-                    case 45:    toolbar.btnTextOrient.menu.items[1].setChecked(true, true); break;
-                    case -45:   toolbar.btnTextOrient.menu.items[2].setChecked(true, true); break;
-                    case 255:   toolbar.btnTextOrient.menu.items[3].setChecked(true, true); break;
-                    case 90:    toolbar.btnTextOrient.menu.items[4].setChecked(true, true); break;
-                    case -90:   toolbar.btnTextOrient.menu.items[5].setChecked(true, true); break;
-                    case 0:     toolbar.btnTextOrient.menu.items[0].setChecked(true, true); break;
+            if (!editOptionsDisabled && !in_chart ) {
+                val = xfs.asc_getNumFormatInfo();
+                if (val) {
+                    this._state.numformat = xfs.asc_getNumFormat();
+                    this._state.numformatinfo = val;
+                    val = val.asc_getType();
+                    if (this._state.numformattype !== val) {
+                        toolbar.cmbNumberFormat.setValue(val, toolbar.txtCustom);
+                        this._state.numformattype = val;
+                    }
                 }
-                this._state.angle = val;
-            }
 
-            val = info.asc_getStyleName();
-            if (this._state.prstyle != val && !this.toolbar.listStyles.isDisabled()) {
-                var listStyle = this.toolbar.listStyles,
-                    listStylesVisible = (listStyle.rendered);
-
-                if (listStylesVisible) {
-                    listStyle.suspendEvents();
-                    var styleRec = listStyle.menuPicker.store.findWhere({
-                        name: val
-                    });
-                    this._state.prstyle = (listStyle.menuPicker.store.length>0) ? val : undefined;
-
-                    listStyle.menuPicker.selectRecord(styleRec);
-                    listStyle.resumeEvents();
+                val = xfs.asc_getAngle();
+                if (this._state.angle !== val) {
+                    toolbar.btnTextOrient.menu.clearAll(true);
+                    switch(val) {
+                        case 45:    toolbar.btnTextOrient.menu.items[1].setChecked(true, true); break;
+                        case -45:   toolbar.btnTextOrient.menu.items[2].setChecked(true, true); break;
+                        case 255:   toolbar.btnTextOrient.menu.items[3].setChecked(true, true); break;
+                        case 90:    toolbar.btnTextOrient.menu.items[4].setChecked(true, true); break;
+                        case -90:   toolbar.btnTextOrient.menu.items[5].setChecked(true, true); break;
+                        case 0:     toolbar.btnTextOrient.menu.items[0].setChecked(true, true); break;
+                    }
+                    this._state.angle = val;
                 }
-            }
 
-            var selCol = selectionType==Asc.c_oAscSelectionType.RangeCol,
-                selRow = selectionType==Asc.c_oAscSelectionType.RangeRow,
-                selMax = selectionType==Asc.c_oAscSelectionType.RangeMax;
+                val = info.asc_getStyleName();
+                if (this._state.prstyle != val && !this.toolbar.listStyles.isDisabled()) {
+                    var listStyle = this.toolbar.listStyles,
+                        listStylesVisible = (listStyle.rendered);
 
-            need_disable = selRow || selMax && this._state.wsLock || this._state.wsProps['InsertColumns'];
-            toolbar.btnAddCell.menu.items[3].setDisabled(need_disable);
+                    if (listStylesVisible) {
+                        listStyle.suspendEvents();
+                        var styleRec = listStyle.menuPicker.store.findWhere({
+                            name: val
+                        });
+                        this._state.prstyle = (listStyle.menuPicker.store.length>0) ? val : undefined;
 
-            need_disable = selRow || selMax && this._state.wsLock || !selCol && this._state.wsLock || this._state.wsProps['DeleteColumns'];
-            toolbar.btnDeleteCell.menu.items[3].setDisabled(need_disable);
+                        listStyle.menuPicker.selectRecord(styleRec);
+                        listStyle.resumeEvents();
+                    }
+                }
 
-            need_disable = selCol || selMax && this._state.wsLock || this._state.wsProps['InsertRows'];
-            toolbar.btnAddCell.menu.items[2].setDisabled(need_disable);
+                var selCol = selectionType==Asc.c_oAscSelectionType.RangeCol,
+                    selRow = selectionType==Asc.c_oAscSelectionType.RangeRow,
+                    selMax = selectionType==Asc.c_oAscSelectionType.RangeMax;
 
-            need_disable = selCol || selMax && this._state.wsLock || !selRow && this._state.wsLock || this._state.wsProps['DeleteRows'];
-            toolbar.btnDeleteCell.menu.items[2].setDisabled(need_disable);
+                need_disable = selRow || selMax && this._state.wsLock || this._state.wsProps['InsertColumns'];
+                toolbar.btnAddCell.menu.items[3].setDisabled(need_disable);
 
-            val = filterInfo && filterInfo.asc_getIsApplyAutoFilter();
-            need_disable = selRow || val || !(selCol || selMax) && this._state.wsLock || selCol && this._state.wsProps['InsertColumns'] || selMax && this._state.wsProps['InsertColumns'] && this._state.wsProps['InsertRows'];
-            toolbar.btnAddCell.menu.items[0].setDisabled(need_disable);
+                need_disable = selRow || selMax && this._state.wsLock || !selCol && this._state.wsLock || this._state.wsProps['DeleteColumns'];
+                toolbar.btnDeleteCell.menu.items[3].setDisabled(need_disable);
 
-            need_disable = selRow || val || !(selCol || selMax) && this._state.wsLock || selCol && this._state.wsProps['DeleteColumns'] || selMax && this._state.wsProps['DeleteColumns'] && this._state.wsProps['DeleteRows'];
-            toolbar.btnDeleteCell.menu.items[0].setDisabled(need_disable);
+                need_disable = selCol || selMax && this._state.wsLock || this._state.wsProps['InsertRows'];
+                toolbar.btnAddCell.menu.items[2].setDisabled(need_disable);
 
-            need_disable = selCol || val || !(selRow || selMax) && this._state.wsLock || selRow && this._state.wsProps['InsertRows'] || selMax && this._state.wsProps['InsertColumns'] && this._state.wsProps['InsertRows'];
-            toolbar.btnAddCell.menu.items[1].setDisabled(need_disable);
+                need_disable = selCol || selMax && this._state.wsLock || !selRow && this._state.wsLock || this._state.wsProps['DeleteRows'];
+                toolbar.btnDeleteCell.menu.items[2].setDisabled(need_disable);
 
-            need_disable = selCol || val || !(selRow || selMax) && this._state.wsLock || selRow && this._state.wsProps['DeleteRows'] || selMax && this._state.wsProps['DeleteColumns'] && this._state.wsProps['DeleteRows'];
-            toolbar.btnDeleteCell.menu.items[1].setDisabled(need_disable);
+                val = filterInfo && filterInfo.asc_getIsApplyAutoFilter();
+                need_disable = selRow || val || !(selCol || selMax) && this._state.wsLock || selCol && this._state.wsProps['InsertColumns'] || selMax && this._state.wsProps['InsertColumns'] && this._state.wsProps['InsertRows'];
+                toolbar.btnAddCell.menu.items[0].setDisabled(need_disable);
 
-            var items = toolbar.btnAddCell.menu.items,
+                need_disable = selRow || val || !(selCol || selMax) && this._state.wsLock || selCol && this._state.wsProps['DeleteColumns'] || selMax && this._state.wsProps['DeleteColumns'] && this._state.wsProps['DeleteRows'];
+                toolbar.btnDeleteCell.menu.items[0].setDisabled(need_disable);
+
+                need_disable = selCol || val || !(selRow || selMax) && this._state.wsLock || selRow && this._state.wsProps['InsertRows'] || selMax && this._state.wsProps['InsertColumns'] && this._state.wsProps['InsertRows'];
+                toolbar.btnAddCell.menu.items[1].setDisabled(need_disable);
+
+                need_disable = selCol || val || !(selRow || selMax) && this._state.wsLock || selRow && this._state.wsProps['DeleteRows'] || selMax && this._state.wsProps['DeleteColumns'] && this._state.wsProps['DeleteRows'];
+                toolbar.btnDeleteCell.menu.items[1].setDisabled(need_disable);
+
+                var items = toolbar.btnAddCell.menu.getItems(true),
+                    enabled = false;
+                for (var i=0; i<4; i++) {
+                    !items[i].isDisabled() && (enabled = true);
+                }
+                toolbar.lockToolbar(Common.enumLock.itemsDisabled, !enabled, {array: [toolbar.btnAddCell]});
+
+                items = me.toolbar.btnDeleteCell.menu.getItems(true);
                 enabled = false;
-            for (var i=0; i<4; i++) {
-                !items[i].isDisabled() && (enabled = true);
+                for (var i=0; i<4; i++) {
+                    !items[i].isDisabled() && (enabled = true);
+                }
+                toolbar.lockToolbar(Common.enumLock.itemsDisabled, !enabled, {array: [toolbar.btnDeleteCell]});
             }
-            toolbar.lockToolbar(Common.enumLock.itemsDisabled, !enabled, {array: [toolbar.btnAddCell]});
-
-            items = me.toolbar.btnDeleteCell.menu.items;
-            enabled = false;
-            for (var i=0; i<4; i++) {
-                !items[i].isDisabled() && (enabled = true);
-            }
-            toolbar.lockToolbar(Common.enumLock.itemsDisabled, !enabled, {array: [toolbar.btnDeleteCell]});
 
             toolbar.lockToolbar(Common.enumLock.headerLock, info.asc_getLockedHeaderFooter(), {array: this.toolbar.btnsEditHeader});
 
             this._state.isUserProtected = info.asc_getUserProtected();
             toolbar.lockToolbar(Common.enumLock.userProtected, this._state.isUserProtected);
+
+            if (toolbar.btnTextDir && !toolbar.btnTextDir.isDisabled() && toolbar.isTabActive('home'))
+                Common.UI.TooltipManager.showTip('rtlDirection');
         },
 
         onApiSelectionChangedRestricted: function(info) {
@@ -3384,10 +3379,6 @@ define([
                 coauth_disable = false;
 
             if ( _disableEditOptions(selectionType, coauth_disable) ) return;
-
-            var need_disable = (selectionType === Asc.c_oAscSelectionType.RangeCells || selectionType === Asc.c_oAscSelectionType.RangeCol ||
-                                selectionType === Asc.c_oAscSelectionType.RangeRow || selectionType === Asc.c_oAscSelectionType.RangeMax);
-            this.toolbar.lockToolbar( Common.enumLock.selRange, need_disable, {array:[this.toolbar.btnEditChartData, this.toolbar.btnEditChartType]} );
 
             if (selectionType == Asc.c_oAscSelectionType.RangeChart || selectionType == Asc.c_oAscSelectionType.RangeChartText)
                 return;
@@ -3589,19 +3580,7 @@ define([
                             (type1!='object' && this._state.clrtext!==undefined && this._state.clrtext.indexOf(clr)<0 )) {
 
                             toolbar.btnTextColor.setAutoColor(false);
-                            if (_.isObject(clr)) {
-                                var isselected = false;
-                                for (var i = 0; i < 10; i++) {
-                                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                        fontColorPicker.select(clr, true);
-                                        isselected = true;
-                                        break;
-                                    }
-                                }
-                                if (!isselected) fontColorPicker.clearSelection();
-                            } else {
-                                fontColorPicker.select(clr, true);
-                            }
+                            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
                             this._state.clrtext = clr;
                         }
                     }
@@ -3628,19 +3607,7 @@ define([
                         (clr.effectValue!==this._state.clrback.effectValue || this._state.clrback.color.indexOf(clr.color)<0)) ||
                     (type1!='object' && this._state.clrback!==undefined && this._state.clrback.indexOf(clr)<0 )) {
 
-                    if (_.isObject(clr)) {
-                        var isselected = false;
-                        for (i = 0; i < 10; i++) {
-                            if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                paragraphColorPicker.select(clr, true);
-                                isselected = true;
-                                break;
-                            }
-                        }
-                        if (!isselected) paragraphColorPicker.clearSelection();
-                    } else {
-                        paragraphColorPicker.select(clr, true);
-                    }
+                    Common.Utils.ThemeColor.selectPickerColorByEffect(clr, paragraphColorPicker);
                     this._state.clrback = clr;
                 }
                 this._state.clrshd_asccolor = color;
@@ -3666,7 +3633,7 @@ define([
                 if (!(index < 0)) {
                     toolbar.btnHorizontalAlign.menu.items[index].setChecked(true);
                 } else if (index == -255) {
-                    toolbar.btnHorizontalAlign.menu.clearAll();
+                    toolbar.btnHorizontalAlign.menu.clearAll(true);
                 }
                 if ( toolbar.btnHorizontalAlign.rendered && toolbar.btnHorizontalAlign.$icon ) {
                     toolbar.btnHorizontalAlign.$icon.removeClass(toolbar.btnHorizontalAlign.options.icls).addClass(align);
@@ -3690,7 +3657,7 @@ define([
                 if (!(index < 0)) {
                     toolbar.btnVerticalAlign.menu.items[index].setChecked(true);
                 } else if (index == -255) {
-                    toolbar.btnVerticalAlign.menu.clearAll();
+                    toolbar.btnVerticalAlign.menu.clearAll(true);
                 }
                 if ( toolbar.btnVerticalAlign.rendered && toolbar.btnVerticalAlign.$icon ) {
                     toolbar.btnVerticalAlign.$icon.removeClass(toolbar.btnVerticalAlign.options.icls).addClass(align);
@@ -3853,19 +3820,7 @@ define([
                             (type1!='object' && this._state.clrtext!==undefined && this._state.clrtext.indexOf(clr)<0 )) {
 
                             this.toolbar.btnTextColor.setAutoColor(false);
-                            if (_.isObject(clr)) {
-                                var isselected = false;
-                                for (var i = 0; i < 10; i++) {
-                                    if (Common.Utils.ThemeColor.ThemeValues[i] == clr.effectValue) {
-                                        fontColorPicker.select(clr, true);
-                                        isselected = true;
-                                        break;
-                                    }
-                                }
-                                if (!isselected) fontColorPicker.clearSelection();
-                            } else {
-                                fontColorPicker.select(clr, true);
-                            }
+                            Common.Utils.ThemeColor.selectPickerColorByEffect(clr, fontColorPicker);
                             this._state.clrtext = clr;
                         }
                     }
@@ -3885,6 +3840,7 @@ define([
                     var clr;
 
                     var effectcolors = Common.Utils.ThemeColor.getEffectColors();
+                    if (!effectcolors) return;
                     for (var i = 0; i < effectcolors.length; i++) {
                         if (typeof(picker.currentColor) == 'object' &&
                             clr === undefined &&
@@ -3901,17 +3857,18 @@ define([
                 }
             };
 
-            updateColors(this.toolbar.mnuTextColorPicker, Common.Utils.ThemeColor.getStandartColors()[1]);
+            var stdColors = Common.Utils.ThemeColor.getStandartColors();
+            updateColors(this.toolbar.mnuTextColorPicker, stdColors ? stdColors[1] : undefined);
             if (this.toolbar.btnTextColor.currentColor === undefined || !this.toolbar.btnTextColor.currentColor.isAuto) {
-                this.toolbar.btnTextColor.currentColor=Common.Utils.ThemeColor.getStandartColors()[1];
+                this.toolbar.btnTextColor.currentColor=stdColors ? stdColors[1] : undefined;
                 this.toolbar.btnTextColor.setColor(this.toolbar.btnTextColor.currentColor);
             }
 
-            updateColors(this.toolbar.mnuBackColorPicker, Common.Utils.ThemeColor.getStandartColors()[3]);
+            updateColors(this.toolbar.mnuBackColorPicker, stdColors ? stdColors[3] : undefined);
             if (this.toolbar.btnBackColor.currentColor === undefined) {
-                this.toolbar.btnBackColor.currentColor=Common.Utils.ThemeColor.getStandartColors()[3];
+                this.toolbar.btnBackColor.currentColor=stdColors ? stdColors[3] : undefined;
             } else
-                this.toolbar.btnBackColor.currentColor = this.toolbar.mnuBackColorPicker.currentColor.color || this.toolbar.mnuBackColorPicker.currentColor;
+                this.toolbar.btnBackColor.currentColor = this.toolbar.mnuBackColorPicker.currentColor ? this.toolbar.mnuBackColorPicker.currentColor.color || this.toolbar.mnuBackColorPicker.currentColor : this.toolbar.mnuBackColorPicker.currentColor;
             this.toolbar.btnBackColor.setColor(this.toolbar.btnBackColor.currentColor);
 
             if (this._state.clrtext_asccolor!==undefined || this._state.clrshd_asccolor!==undefined) {
@@ -3930,7 +3887,7 @@ define([
                     var clr_item = this.toolbar.btnBorders.menu.$el.find('#id-toolbar-menu-auto-bordercolor > a');
                     !clr_item.hasClass('selected') && clr_item.addClass('selected');
                 }
-                this.toolbar.btnBorders.options.borderscolor = currentColor.color || currentColor;
+                this.toolbar.btnBorders.options.borderscolor = currentColor ? currentColor.color || currentColor : currentColor;
                 $('#id-toolbar-mnu-item-border-color > a .menu-item-icon').css('border-color', '#' + this.toolbar.btnBorders.options.borderscolor);
             }
         },
@@ -3983,7 +3940,7 @@ define([
             var menuitem = new Common.UI.MenuItem({
                 template: _.template('<div id="id-toolbar-menu-insertshape" class="menu-insertshape"></div>')
             });
-            me.toolbar.btnInsertShape.menu.addItem(menuitem);
+            me.toolbar.btnInsertShape.menu.addItem(menuitem, true);
 
             var recents = Common.localStorage.getItem('sse-recent-shapes');
 
@@ -3992,10 +3949,12 @@ define([
                 itemTemplate: _.template('<div class="item-shape" id="<%= id %>"><svg width="20" height="20" class=\"icon uni-scale\"><use xlink:href=\"#svg-icon-<%= data.shapeType %>\"></use></svg></div>'),
                 groups: me.getApplication().getCollection('ShapeGroups'),
                 parentMenu: me.toolbar.btnInsertShape.menu,
+                outerMenu: {menu: me.toolbar.btnInsertShape.menu, index:0},
                 restoreHeight: 652,
                 textRecentlyUsed: me.textRecentlyUsed,
                 recentShapes: recents ? JSON.parse(recents) : null
             });
+            me.toolbar.btnInsertShape.menu.setInnerMenu([{menu: shapePicker, index: 0}]);
             shapePicker.on('item:click', function(picker, item, record, e) {
                 if (me.api) {
                     if (record) {
@@ -4015,11 +3974,9 @@ define([
         },
 
         fillEquations: function() {
-            if (!this.toolbar.btnInsertEquation.rendered || this.toolbar.btnInsertEquation.menu.items.length>0) return;
+            if (!this.toolbar.btnInsertEquation.rendered || this.toolbar.btnInsertEquation.menu.getItemsLength(true)>0) return;
 
             var me = this, equationsStore = this.getApplication().getCollection('EquationGroups');
-
-            me.toolbar.btnInsertEquation.menu.removeAll();
             var onShowAfter = function(menu) {
                 for (var i = 0; i < equationsStore.length; ++i) {
                     var equationPicker = new Common.UI.DataViewSimple({
@@ -4068,7 +4025,7 @@ define([
                         ]
                     })
                 });
-                me.toolbar.btnInsertEquation.menu.addItem(menuItem);
+                me.toolbar.btnInsertEquation.menu.addItem(menuItem, true);
             }
         },
 
@@ -4483,7 +4440,7 @@ define([
 
         onCellsRange: function(status) {
             this.api.isRangeSelection = (status != Asc.c_oAscSelectionDialogType.None);
-            this.onApiEditCell(this.api.isRangeSelection ? Asc.c_oAscCellEditorState.editStart : Asc.c_oAscCellEditorState.editEnd);
+            this.onEditCell(this.api.isRangeSelection || this.api.isCellEdited ? Asc.c_oAscCellEditorState.editStart : Asc.c_oAscCellEditorState.editEnd, true);
 
             var toolbar = this.toolbar;
             toolbar.lockToolbar(Common.enumLock.selRangeEdit, this.api.isRangeSelection);
@@ -4539,7 +4496,7 @@ define([
 
         applyFormulaSettings: function() {
             if (this.toolbar.btnInsertFormula && this.toolbar.btnInsertFormula.rendered) {
-                var formulas = this.toolbar.btnInsertFormula.menu.items;
+                var formulas = this.toolbar.btnInsertFormula.menu.getItems(true);
                 for (var i=0; i<Math.min(4,formulas.length); i++) {
                     formulas[i].setCaption(this.api.asc_getFormulaLocaleName(formulas[i].value));
                 }
@@ -4550,22 +4507,24 @@ define([
             var me = this;
             me.appConfig = config;
 
-            var compactview = !config.isEdit;
-            if ( config.isEdit && !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle ) {
-                if ( Common.localStorage.itemExists("sse-compact-toolbar") ) {
-                    compactview = Common.localStorage.getBool("sse-compact-toolbar");
-                } else
-                if ( config.customization && config.customization.compactToolbar )
-                    compactview = true;
+            var editmode = config.isEdit,
+                compactview = !editmode;
+            if (!config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle) {
+                if ( Common.localStorage.itemExists(editmode ? "sse-compact-toolbar" : "sse-view-compact-toolbar") ) {
+                    compactview = Common.localStorage.getBool(editmode ? "sse-compact-toolbar" : "sse-view-compact-toolbar");
+                } else if (config.customization) {
+                    compactview = editmode ? !!config.customization.compactToolbar : config.customization.compactToolbar!==false;
+                }
+                Common.Utils.InternalSettings.set('toolbar-active-tab', !editmode && !compactview);
             }
 
-            me.toolbar.render(_.extend({isCompactView: compactview}, config));
+            me.toolbar.render(_.extend({isCompactView: editmode ? compactview : true}, config));
 
             if ( !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle ) {
                 var tab = {action: 'review', caption: me.toolbar.textTabCollaboration, layoutname: 'toolbar-collaboration', dataHintTitle: 'U'};
                 var $panel = me.getApplication().getController('Common.Controllers.ReviewChanges').createToolbarPanel();
                 if ($panel) {
-                    me.toolbar.addTab(tab, $panel, 7);
+                    me.toolbar.addTab(tab, $panel, 6);
                     me.toolbar.setVisible('review', (config.isEdit || config.canViewReview || config.canCoAuthoring && config.canComments) && Common.UI.LayoutManager.isElementVisible('toolbar-collaboration'));
                 }
             }
@@ -4600,7 +4559,7 @@ define([
                     me.toolbar.btnsSetAutofilter = datatab.getButtons('set-filter');
                     me.toolbar.btnsClearAutofilter = datatab.getButtons('clear-filter');
                     me.toolbar.btnCustomSort = datatab.getButtons('sort-custom');
-                    me.toolbar.btnRemoveDuplicates = datatab.getButtons('rem-duplicates');
+                    me.toolbar.btnsRemoveDuplicates = [datatab.getButtons('rem-duplicates')];
                     me.toolbar.btnDataValidation = datatab.getButtons('data-validation');
 
                     var formulatab = me.getApplication().getController('FormulaDialog');
@@ -4612,18 +4571,34 @@ define([
                     Array.prototype.push.apply(me.toolbar.lockControls, formulatab.getButtons());
 
                     if ( config.canFeaturePivot ) {
-                        tab = {action: 'pivot', caption: me.textPivot, dataHintTitle: 'B'};
+                        tab = {action: 'pivot', caption: me.textPivot, dataHintTitle: 'B', aux: true};
                         var pivottab = me.getApplication().getController('PivotTable');
                         pivottab.setApi(me.api).setConfig({toolbar: me});
                         $panel = pivottab.createToolbarPanel();
                         if ($panel) {
-                            me.toolbar.addTab(tab, $panel, 6);
-                            me.toolbar.setVisible('pivot', true);
+                            me.toolbar.addTab(tab, $panel);
+                            me._state.inpivot && me.toolbar.setVisible('pivot', true);
                             Array.prototype.push.apply(me.toolbar.lockControls, pivottab.getView('PivotTable').getButtons());
                         }
                     }
 
-                    if (!(config.customization && config.customization.compactHeader)) {
+                    if ( config.canFeatureTable ) {
+                        tab = {caption: me.toolbar.textTabTableDesign, action: 'tabledesign', extcls: config.isEdit ? 'canedit' : '', layoutname: 'toolbar-tabledesign', dataHintTitle: 'B', aux: true};
+                        var tabledesigntab = me.getApplication().getController('TableDesignTab');
+                        tabledesigntab.setApi(me.api).setConfig({toolbar: me});
+                        var view = tabledesigntab.getView('TableDesignTab');
+                        var tabledesignbuttons = view.getButtons();
+                        var $panel = tabledesigntab.createToolbarPanel();
+                        if ($panel) {
+                            me.toolbar.addTab(tab, $panel);
+                            me._state.intabledesign && me.toolbar.setVisible('tabledesign', true);
+                            Array.prototype.push.apply(me.toolbar.lockControls, tabledesignbuttons);
+                        }
+                        me.toolbar.btnsRemoveDuplicates.push(view.getButtons('rem-duplicates'));
+                        me.toolbar.btnsTableDesign = tabledesignbuttons;
+                    }
+
+                    if (!config.compactHeader) {
                         // hide 'print' and 'save' buttons group and next separator
                         me.toolbar.btnPrint.$el.parents('.group').hide().next().hide();
 
@@ -4634,7 +4609,7 @@ define([
                         me.toolbar.btnPaste.$el.detach().appendTo($box);
                         me.toolbar.btnPaste.$el.find('button').attr('data-hint-direction', 'bottom');
                         me.toolbar.btnCopy.$el.removeClass('split');
-                        me.toolbar.processPanelVisible(null, true, true);
+                        me.toolbar.processPanelVisible(null, true);
                     }
 
                     if ( config.canProtect ) {
@@ -4644,11 +4619,13 @@ define([
                             (config.isSignatureSupport || config.isPasswordSupport) && $panel.append($('<div class="separator long"></div>'));
                             var wbtab = me.getApplication().getController('WBProtection');
                             $panel.append(wbtab.createToolbarPanel());
-                            me.toolbar.addTab(tab, $panel, 8);
+                            me.toolbar.addTab(tab, $panel, 7);
                             me.toolbar.setVisible('protect', Common.UI.LayoutManager.isElementVisible('toolbar-protect'));
                             Array.prototype.push.apply(me.toolbar.lockControls, wbtab.getView('WBProtection').getButtons());
                         }
                     }
+
+                    me.getApplication().getController('Common.Controllers.ExternalLinks').setConfig({toolbar: me}).setApi(me.api);
                 }
             }
             if ( !config.isEditDiagram && !config.isEditMailMerge && !config.isEditOle ) {
@@ -4657,8 +4634,10 @@ define([
                 viewtab.setApi(me.api).setConfig({toolbar: me, mode: config});
                 var $panel = viewtab.createToolbarPanel();
                 if ($panel) {
-                    me.toolbar.addTab(tab, $panel, 9);
-                    me.toolbar.setVisible('view', Common.UI.LayoutManager.isElementVisible('toolbar-view'));
+                    var visible = Common.UI.LayoutManager.isElementVisible('toolbar-view');
+                    me.toolbar.addTab(tab, $panel, 8);
+                    me.toolbar.setVisible('view', visible);
+                    !editmode && !compactview && visible && Common.Utils.InternalSettings.set('toolbar-active-tab', 'view'); // need to activate later
                 }
                 config.isEdit && Array.prototype.push.apply(me.toolbar.lockControls, viewtab.getView('ViewTab').getButtons());
             }
@@ -4671,7 +4650,7 @@ define([
             this.btnsComment = [];
             if ( config.canCoAuthoring && config.canComments ) {
                 var _set = Common.enumLock;
-                this.btnsComment = Common.Utils.injectButtons(this.toolbar.$el.find('.slot-comment'), 'tlbtn-addcomment-', 'toolbar__icon btn-add-comment', this.toolbar.capBtnComment,
+                this.btnsComment = Common.Utils.injectButtons(this.toolbar.$el.find('.slot-comment'), 'tlbtn-addcomment-', 'toolbar__icon btn-big-add-comment', this.toolbar.capBtnComment,
                                                             [_set.lostConnect, _set.commentLock, _set.editCell, _set['Objects']], undefined, undefined, undefined, '1', 'bottom', 'small');
 
                 if ( this.btnsComment.length ) {
@@ -4689,14 +4668,13 @@ define([
                         this.btnsComment.add(_comments.buttonAddNew);
                     }
                     Array.prototype.push.apply(me.toolbar.lockControls, this.btnsComment);
+                    Common.UI.LayoutManager.addControls(this.btnsComment);
                 }
             }
-
-            Common.Utils.asyncCall(function () {
-                if ( config.isEdit ) {
-                    me.toolbar.onAppReady(config);
-                }
-            });
+            if ( config.isEdit && !config.isEditDiagram  && !config.isEditMailMerge  && !config.isEditOle ) {
+                if (me.toolbar.btnTextDir && !me.toolbar.btnTextDir.isDisabled() && me.toolbar.isTabActive('home'))
+                    Common.UI.TooltipManager.showTip('rtlDirection');
+            }
         },
 
         onFileMenu: function (opts) {
@@ -4707,6 +4685,14 @@ define([
                 if ( this.toolbar.isTabActive('file') )
                     this.toolbar.setTab();
             }
+        },
+
+        onInsertTable: function() {
+            this._state.showTableDesignTab = true;
+        },
+
+        onInsertPivot:  function() {
+            this._state.showPivotTab = true;
         },
 
         onPageSizeClick: function(menu, item, state) {
@@ -4801,6 +4787,20 @@ define([
                     this.api.asc_DistributeSelectedDrawingObjectVer();
                     Common.component.Analytics.trackEvent('ToolBar', 'Distribute');
                 }
+            }
+            Common.NotificationCenter.trigger('edit:complete', this.toolbar);
+        },
+
+        onBeforeShapesMerge: function() {
+            this.toolbar.btnShapesMerge.menu.getItems(true).forEach(function (item) {
+                item.setDisabled(!this.api.asc_canMergeSelectedShapes(item.value)); 
+            }, this);
+        },
+
+        onClickMenuShapesMerge: function (menu, item) {
+            if (item && item.value) {
+                this.api.asc_mergeSelectedShapes(item.value); 
+                Common.component.Analytics.trackEvent('ToolBar', 'Shapes Merge'); 
             }
             Common.NotificationCenter.trigger('edit:complete', this.toolbar);
         },
@@ -4976,12 +4976,17 @@ define([
         },
 
         onPrintGridlinesChange: function (field, value) {
-            this.api.asc_SetPrintGridlines(value === 'checked');
+            this.api && this.api.asc_SetPrintGridlines(value === 'checked');
             Common.NotificationCenter.trigger('edit:complete', this.toolbar);
         },
 
         onPrintHeadingsChange: function (field, value) {
-            this.api.asc_SetPrintHeadings(value === 'checked');
+            this.api && this.api.asc_SetPrintHeadings(value === 'checked');
+            Common.NotificationCenter.trigger('edit:complete', this.toolbar);
+        },
+
+        onRtlSheetClick: function (btn) {
+            this.api && this.api.asc_setRightToLeft(btn.pressed);
             Common.NotificationCenter.trigger('edit:complete', this.toolbar);
         },
 
@@ -5098,7 +5103,7 @@ define([
 
         onApiBeginSmartArtPreview: function (type) {
             this.smartArtGenerating = type;
-            this.smartArtGroups = this.toolbar.btnInsertSmartArt.menu.items;
+            this.smartArtGroups = this.toolbar.btnInsertSmartArt.menu.getItems(true);
             var menuPicker = _.findWhere(this.smartArtGroups, {value: type}).menuPicker;
             menuPicker.loaded = true;
             this.smartArtData = Common.define.smartArt.getSmartArtData();
@@ -5127,6 +5132,7 @@ define([
             this.smartArtGenerating = undefined;
             if (this.currentSmartArtMenu) {
                 this.currentSmartArtMenu.menu.alignPosition();
+                this.currentSmartArtMenu.cmpEl && this.currentSmartArtMenu.cmpEl.attr('data-preview-loaded', true);
             }
             if (this.delayedSmartArt !== undefined) {
                 var delayedSmartArt = this.delayedSmartArt;
@@ -5156,6 +5162,10 @@ define([
 
         onEyedropperEnd: function () {
             this.toolbar._isEyedropperStart = false;
+        },
+
+        onShowProtectedChartPopup: function(value) {
+            this.toolbar.lockToolbar(Common.enumLock.externalChartProtected, value, {array: [this.toolbar.btnPaste, this.toolbar.btnInsertFormula, this.toolbar.btnDecDecimal,this.toolbar.btnIncDecimal,this.toolbar.cmbNumberFormat]});
         },
 
         onChartRecommendedClick: function() {
@@ -5207,397 +5217,67 @@ define([
 
         onShowBeforeFillNumMenu: function() {
             if (this.api) {
-                var items = this.toolbar.btnFillNumbers.menu.items,
+                var items = this.toolbar.btnFillNumbers.menu.getItems(true),
                     props = this.api.asc_GetSeriesSettings().asc_getToolbarMenuAllowedProps();
 
-                for (var i = 0; i < items.length; i++) {
+                for (var i = 0; i < items.length ; i++) {
                     items[i].setDisabled(!props[items[i].value]);
                 }
             }
         },
 
-        textEmptyImgUrl     : 'You need to specify image URL.',
-        warnMergeLostData   : 'Operation can destroy data in the selected cells.<br>Continue?',
-        textWarning         : 'Warning',
-        textFontSizeErr     : 'The entered value is incorrect.<br>Please enter a numeric value between 1 and 409',
-        confirmAddFontName  : 'The font you are going to save is not available on the current device.<br>The text style will be displayed using one of the device fonts, the saved font will be used when it is available.<br>Do you want to continue?',
-        textSymbols                                : 'Symbols',
-        textFraction                               : 'Fraction',
-        textScript                                 : 'Script',
-        textRadical                                : 'Radical',
-        textIntegral                               : 'Integral',
-        textLargeOperator                          : 'Large Operator',
-        textBracket                                : 'Bracket',
-        textFunction                               : 'Function',
-        textAccent                                 : 'Accent',
-        textLimitAndLog                            : 'Limit And Log',
-        textOperator                               : 'Operator',
-        textMatrix                                 : 'Matrix',
+        onPluginToolbarMenu: function(data) {
+            var api = this.api;
+            this.toolbar && Array.prototype.push.apply(this.toolbar.lockControls, Common.UI.LayoutManager.addCustomControls(this.toolbar, data, function(guid, value, pressed) {
+                api && api.onPluginToolbarMenuItemClick(guid, value, pressed);
+            }));
+        },
 
-        txtSymbol_pm                               : 'Plus Minus',
-        txtSymbol_infinity                         : 'Infinity',
-        txtSymbol_equals                           : 'Equal',
-        txtSymbol_neq                              : 'Not Equal To',
-        txtSymbol_about                            : 'Approximately',
-        txtSymbol_times                            : 'Multiplication Sign',
-        txtSymbol_div                              : 'Division Sign',
-        txtSymbol_factorial                        : 'Factorial',
-        txtSymbol_propto                           : 'Proportional To',
-        txtSymbol_less                             : 'Less Than',
-        txtSymbol_ll                               : 'Much Less Than',
-        txtSymbol_greater                          : 'Greater Than',
-        txtSymbol_gg                               : 'Much Greater Than',
-        txtSymbol_leq                              : 'Less Than or Equal To',
-        txtSymbol_geq                              : 'Greater Than or Equal To',
-        txtSymbol_mp                               : 'Minus Plus',
-        txtSymbol_cong                             : 'Approximately Equal To',
-        txtSymbol_approx                           : 'Almost Equal To',
-        txtSymbol_equiv                            : 'Identical To',
-        txtSymbol_forall                           : 'For All',
-        txtSymbol_additional                       : 'Complement',
-        txtSymbol_partial                          : 'Partial Differential',
-        txtSymbol_sqrt                             : 'Radical Sign',
-        txtSymbol_cbrt                             : 'Cube Root',
-        txtSymbol_qdrt                             : 'Fourth Root',
-        txtSymbol_cup                              : 'Union',
-        txtSymbol_cap                              : 'Intersection',
-        txtSymbol_emptyset                         : 'Empty Set',
-        txtSymbol_percent                          : 'Percentage',
-        txtSymbol_degree                           : 'Degrees',
-        txtSymbol_fahrenheit                       : 'Degrees Fahrenheit',
-        txtSymbol_celsius                          : 'Degrees Celsius',
-        txtSymbol_inc                              : 'Increment',
-        txtSymbol_nabla                            : 'Nabla',
-        txtSymbol_exists                           : 'There Exist',
-        txtSymbol_notexists                        : 'There Does Not Exist',
-        txtSymbol_in                               : 'Element Of',
-        txtSymbol_ni                               : 'Contains as Member',
-        txtSymbol_leftarrow                        : 'Left Arrow',
-        txtSymbol_uparrow                          : 'Up Arrow',
-        txtSymbol_rightarrow                       : 'Right Arrow',
-        txtSymbol_downarrow                        : 'Down Arrow',
-        txtSymbol_leftrightarrow                   : 'Left-Right Arrow',
-        txtSymbol_therefore                        : 'Therefore',
-        txtSymbol_plus                             : 'Plus',
-        txtSymbol_minus                            : 'Minus',
-        txtSymbol_not                              : 'Not Sign',
-        txtSymbol_ast                              : 'Asterisk Operator',
-        txtSymbol_bullet                           : 'Bulet Operator',
-        txtSymbol_vdots                            : 'Vertical Ellipsis',
-        txtSymbol_cdots                            : 'Midline Horizontal Ellipsis',
-        txtSymbol_rddots                           : 'Up Right Diagonal Ellipsis',
-        txtSymbol_ddots                            : 'Down Right Diagonal Ellipsis',
-        txtSymbol_aleph                            : 'Alef',
-        txtSymbol_beth                             : 'Bet',
-        txtSymbol_qed                              : 'End of Proof',
-        txtSymbol_alpha                            : 'Alpha',
-        txtSymbol_beta                             : 'Beta',
-        txtSymbol_gamma                            : 'Gamma',
-        txtSymbol_delta                            : 'Delta',
-        txtSymbol_varepsilon                       : 'Epsilon Variant',
-        txtSymbol_epsilon                          : 'Epsilon',
-        txtSymbol_zeta                             : 'Zeta',
-        txtSymbol_eta                              : 'Eta',
-        txtSymbol_theta                            : 'Theta',
-        txtSymbol_vartheta                         : 'Theta Variant',
-        txtSymbol_iota                             : 'Iota',
-        txtSymbol_kappa                            : 'Kappa',
-        txtSymbol_lambda                           : 'Lambda',
-        txtSymbol_mu                               : 'Mu',
-        txtSymbol_nu                               : 'Nu',
-        txtSymbol_xsi                              : 'Xi',
-        txtSymbol_o                                : 'Omicron',
-        txtSymbol_pi                               : 'Pi',
-        txtSymbol_varpi                            : 'Pi Variant',
-        txtSymbol_rho                              : 'Rho',
-        txtSymbol_varrho                           : 'Rho Variant',
-        txtSymbol_sigma                            : 'Sigma',
-        txtSymbol_varsigma                         : 'Sigma Variant',
-        txtSymbol_tau                              : 'Tau',
-        txtSymbol_upsilon                          : 'Upsilon',
-        txtSymbol_varphi                           : 'Phi Variant',
-        txtSymbol_phi                              : 'Phi',
-        txtSymbol_chi                              : 'Chi',
-        txtSymbol_psi                              : 'Psi',
-        txtSymbol_omega                            : 'Omega',
+        onPluginToolbarCustomMenuItems: function(action, data) {
+            if (!this._isDocReady) {
+                this._state.customPluginData = (this._state.customPluginData || []).concat([{action: action, data: data}]);
+                return;
+            }
+            var api = this.api;
+            this.toolbar && Common.UI.LayoutManager.addCustomMenuItems(action, data, function(guid, value) {
+                api && api.onPluginContextMenuItemClick(guid, value);
+            });
+        },
 
-        txtFractionVertical                        : 'Stacked Fraction',
-        txtFractionDiagonal                        : 'Skewed Fraction',
-        txtFractionHorizontal                      : 'Linear Fraction',
-        txtFractionSmall                           : 'Small Fraction',
-        txtFractionDifferential_1                  : 'Differential',
-        txtFractionDifferential_2                  : 'Differential',
-        txtFractionDifferential_3                  : 'Differential',
-        txtFractionDifferential_4                  : 'Differential',
-        txtFractionPi_2                            : 'Pi Over 2',
+        onPluginUpdateToolbarMenu: function(data) {
+            var api = this.api;
+            this.toolbar && Array.prototype.push.apply(this.toolbar.lockControls, Common.UI.LayoutManager.addCustomControls(this.toolbar, data, function(guid, value, pressed) {
+                api && api.onPluginToolbarMenuItemClick(guid, value, pressed);
+            }, true));
+        },
 
-        txtScriptSup                               : 'Superscript',
-        txtScriptSub                               : 'Subscript',
-        txtScriptSubSup                            : 'Subscript-Superscript',
-        txtScriptSubSupLeft                        : 'Left Subscript-Superscript',
-        txtScriptCustom_1                          : 'Script',
-        txtScriptCustom_2                          : 'Script',
-        txtScriptCustom_3                          : 'Script',
-        txtScriptCustom_4                          : 'Script',
+        onDocumentReady: function() {
+            this._isDocReady = true;
+            var me = this;
+            this._state.customPluginData && this._state.customPluginData.forEach(function(plugin) {
+                me.onPluginToolbarCustomMenuItems(plugin.action, plugin.data);
+            });
+            this._state.customPluginData = null;
+        },
 
-        txtRadicalSqrt                             : 'Square Root',
-        txtRadicalRoot_n                           : 'Radical With Degree',
-        txtRadicalRoot_2                           : 'Square Root With Degree',
-        txtRadicalRoot_3                           : 'Cubic Root',
-        txtRadicalCustom_1                         : 'Radical',
-        txtRadicalCustom_2                         : 'Radical',
+        onActiveTab: function(tab) {
+            if (tab !== 'home')
+                Common.UI.TooltipManager.closeTip('rtlDirection');
+            else if (this.toolbar && this.toolbar.btnTextDir && !this.toolbar.btnTextDir.isDisabled())
+                setTimeout(function() {
+                    Common.UI.TooltipManager.showTip('rtlDirection');
+                }, 10);
 
-        txtIntegral                                : 'Integral',
-        txtIntegralSubSup                          : 'Integral',
-        txtIntegralCenterSubSup                    : 'Integral',
-        txtIntegralDouble                          : 'Double Integral',
-        txtIntegralDoubleSubSup                    : 'Double Integral',
-        txtIntegralDoubleCenterSubSup              : 'Double Integral',
-        txtIntegralTriple                          : 'Triple Integral',
-        txtIntegralTripleSubSup                    : 'Triple Integral',
-        txtIntegralTripleCenterSubSup              : 'Triple Integral',
-        txtIntegralOriented                        : 'Contour Integral',
-        txtIntegralOrientedSubSup                  : 'Contour Integral',
-        txtIntegralOrientedCenterSubSup            : 'Contour Integral',
-        txtIntegralOrientedDouble                  : 'Surface Integral',
-        txtIntegralOrientedDoubleSubSup            : 'Surface Integral',
-        txtIntegralOrientedDoubleCenterSubSup      : 'Surface Integral',
-        txtIntegralOrientedTriple                  : 'Volume Integral',
-        txtIntegralOrientedTripleSubSup            : 'Volume Integral',
-        txtIntegralOrientedTripleCenterSubSup      : 'Volume Integral',
-        txtIntegral_dx                             : 'Differential x',
-        txtIntegral_dy                             : 'Differential y',
-        txtIntegral_dtheta                         : 'Differential theta',
+            (tab === 'tabledesign') ? Common.UI.TooltipManager.showTip('tableTab') : Common.UI.TooltipManager.closeTip('tableTab');
+        },
 
-        txtLargeOperator_Sum                       : 'Summation',
-        txtLargeOperator_Sum_CenterSubSup          : 'Summation',
-        txtLargeOperator_Sum_SubSup                : 'Summation',
-        txtLargeOperator_Sum_CenterSub             : 'Summation',
-        txtLargeOperator_Sum_Sub                   : 'Summation',
-        txtLargeOperator_Prod                      : 'Product',
-        txtLargeOperator_Prod_CenterSubSup         : 'Product',
-        txtLargeOperator_Prod_SubSup               : 'Product',
-        txtLargeOperator_Prod_CenterSub            : 'Product',
-        txtLargeOperator_Prod_Sub                  : 'Product',
-        txtLargeOperator_CoProd                    : 'Co-Product',
-        txtLargeOperator_CoProd_CenterSubSup       : 'Co-Product',
-        txtLargeOperator_CoProd_SubSup             : 'Co-Product',
-        txtLargeOperator_CoProd_CenterSub          : 'Co-Product',
-        txtLargeOperator_CoProd_Sub                : 'Co-Product',
-        txtLargeOperator_Union                     : 'Union',
-        txtLargeOperator_Union_CenterSubSup        : 'Union',
-        txtLargeOperator_Union_SubSup              : 'Union',
-        txtLargeOperator_Union_CenterSub           : 'Union',
-        txtLargeOperator_Union_Sub                 : 'Union',
-        txtLargeOperator_Intersection              : 'Intersection',
-        txtLargeOperator_Intersection_CenterSubSup : 'Intersection',
-        txtLargeOperator_Intersection_SubSup       : 'Intersection',
-        txtLargeOperator_Intersection_CenterSub    : 'Intersection',
-        txtLargeOperator_Intersection_Sub          : 'Intersection',
-        txtLargeOperator_Disjunction               : 'Vee',
-        txtLargeOperator_Disjunction_CenterSubSup  : 'Vee',
-        txtLargeOperator_Disjunction_SubSup        : 'Vee',
-        txtLargeOperator_Disjunction_CenterSub     : 'Vee',
-        txtLargeOperator_Disjunction_Sub           : 'Vee',
-        txtLargeOperator_Conjunction               : 'Wedge',
-        txtLargeOperator_Conjunction_CenterSubSup  : 'Wedge',
-        txtLargeOperator_Conjunction_SubSup        : 'Wedge',
-        txtLargeOperator_Conjunction_CenterSub     : 'Wedge',
-        txtLargeOperator_Conjunction_Sub           : 'Wedge',
-        txtLargeOperator_Custom_1                  : 'Summation',
-        txtLargeOperator_Custom_2                  : 'Summation',
-        txtLargeOperator_Custom_3                  : 'Summation',
-        txtLargeOperator_Custom_4                  : 'Product',
-        txtLargeOperator_Custom_5                  : 'Union',
+        onClickTab: function(tab) {
+            this._state.showPivotTab = tab === 'pivot';
+            this._state.showTableDesignTab = tab ==='tabledesign';
+        },
 
-        txtBracket_Round                           : 'Brackets',
-        txtBracket_Square                          : 'Brackets',
-        txtBracket_Curve                           : 'Brackets',
-        txtBracket_Angle                           : 'Brackets',
-        txtBracket_LowLim                          : 'Brackets',
-        txtBracket_UppLim                          : 'Brackets',
-        txtBracket_Line                            : 'Brackets',
-        txtBracket_LineDouble                      : 'Brackets',
-        txtBracket_Square_OpenOpen                 : 'Brackets',
-        txtBracket_Square_CloseClose               : 'Brackets',
-        txtBracket_Square_CloseOpen                : 'Brackets',
-        txtBracket_SquareDouble                    : 'Brackets',
-
-        txtBracket_Round_Delimiter_2               : 'Brackets with Separators',
-        txtBracket_Curve_Delimiter_2               : 'Brackets with Separators',
-        txtBracket_Angle_Delimiter_2               : 'Brackets with Separators',
-        txtBracket_Angle_Delimiter_3               : 'Brackets with Separators',
-        txtBracket_Round_OpenNone                  : 'Single Bracket',
-        txtBracket_Round_NoneOpen                  : 'Single Bracket',
-        txtBracket_Square_OpenNone                 : 'Single Bracket',
-        txtBracket_Square_NoneOpen                 : 'Single Bracket',
-        txtBracket_Curve_OpenNone                  : 'Single Bracket',
-        txtBracket_Curve_NoneOpen                  : 'Single Bracket',
-        txtBracket_Angle_OpenNone                  : 'Single Bracket',
-        txtBracket_Angle_NoneOpen                  : 'Single Bracket',
-        txtBracket_LowLim_OpenNone                 : 'Single Bracket',
-        txtBracket_LowLim_NoneNone                 : 'Single Bracket',
-        txtBracket_UppLim_OpenNone                 : 'Single Bracket',
-        txtBracket_UppLim_NoneOpen                 : 'Single Bracket',
-        txtBracket_Line_OpenNone                   : 'Single Bracket',
-        txtBracket_Line_NoneOpen                   : 'Single Bracket',
-        txtBracket_LineDouble_OpenNone             : 'Single Bracket',
-        txtBracket_LineDouble_NoneOpen             : 'Single Bracket',
-        txtBracket_SquareDouble_OpenNone           : 'Single Bracket',
-        txtBracket_SquareDouble_NoneOpen           : 'Single Bracket',
-        txtBracket_Custom_1                        : 'Case (Two Conditions)',
-        txtBracket_Custom_2                        : 'Cases (Three Conditions)',
-        txtBracket_Custom_3                        : 'Stack Object',
-        txtBracket_Custom_4                        : 'Stack Object',
-        txtBracket_Custom_5                        : 'Cases Example',
-        txtBracket_Custom_6                        : 'Binomial Coefficient',
-        txtBracket_Custom_7                        : 'Binomial Coefficient',
-
-        txtFunction_Sin                            : 'Sine Function',
-        txtFunction_Cos                            : 'Cosine Function',
-        txtFunction_Tan                            : 'Tangent Function',
-        txtFunction_Csc                            : 'Cosecant Function',
-        txtFunction_Sec                            : 'Secant Function',
-        txtFunction_Cot                            : 'Cotangent Function',
-        txtFunction_1_Sin                          : 'Inverse Sine Function',
-        txtFunction_1_Cos                          : 'Inverse Cosine Function',
-        txtFunction_1_Tan                          : 'Inverse Tangent Function',
-        txtFunction_1_Csc                          : 'Inverse Cosecant Function',
-        txtFunction_1_Sec                          : 'Inverse Secant Function',
-        txtFunction_1_Cot                          : 'Inverse Cotangent Function',
-        txtFunction_Sinh                           : 'Hyperbolic Sine Function',
-        txtFunction_Cosh                           : 'Hyperbolic Cosine Function',
-        txtFunction_Tanh                           : 'Hyperbolic Tangent Function',
-        txtFunction_Csch                           : 'Hyperbolic Cosecant Function',
-        txtFunction_Sech                           : 'Hyperbolic Secant Function',
-        txtFunction_Coth                           : 'Hyperbolic Cotangent Function',
-        txtFunction_1_Sinh                         : 'Hyperbolic Inverse Sine Function',
-        txtFunction_1_Cosh                         : 'Hyperbolic Inverse Cosine Function',
-        txtFunction_1_Tanh                         : 'Hyperbolic Inverse Tangent Function',
-        txtFunction_1_Csch                         : 'Hyperbolic Inverse Cosecant Function',
-        txtFunction_1_Sech                         : 'Hyperbolic Inverse Secant Function',
-        txtFunction_1_Coth                         : 'Hyperbolic Inverse Cotangent Function',
-        txtFunction_Custom_1                       : 'Sine theta',
-        txtFunction_Custom_2                       : 'Cos 2x',
-        txtFunction_Custom_3                       : 'Tangent formula',
-
-        txtAccent_Dot                              : 'Dot',
-        txtAccent_DDot                             : 'Double Dot',
-        txtAccent_DDDot                            : 'Triple Dot',
-        txtAccent_Hat                              : 'Hat',
-        txtAccent_Check                            : 'Check',
-        txtAccent_Accent                           : 'Acute',
-        txtAccent_Grave                            : 'Grave',
-        txtAccent_Smile                            : 'Breve',
-        txtAccent_Tilde                            : 'Tilde',
-        txtAccent_Bar                              : 'Bar',
-        txtAccent_DoubleBar                        : 'Double Overbar',
-        txtAccent_CurveBracketTop                  : 'Overbrace',
-        txtAccent_CurveBracketBot                  : 'Underbrace',
-        txtAccent_GroupTop                         : 'Grouping Character Above',
-        txtAccent_GroupBot                         : 'Grouping Character Below',
-        txtAccent_ArrowL                           : 'Leftwards Arrow Above',
-        txtAccent_ArrowR                           : 'Rightwards Arrow Above',
-        txtAccent_ArrowD                           : 'Right-Left Arrow Above',
-        txtAccent_HarpoonL                         : 'Leftwards Harpoon Above',
-        txtAccent_HarpoonR                         : 'Rightwards Harpoon Above',
-        txtAccent_BorderBox                        : 'Boxed Formula (With Placeholder)',
-        txtAccent_BorderBoxCustom                  : 'Boxed Formula (Example)',
-        txtAccent_BarTop                           : 'Overbar',
-        txtAccent_BarBot                           : 'Underbar',
-        txtAccent_Custom_1                         : 'Vector A',
-        txtAccent_Custom_2                         : 'ABC With Overbar',
-        txtAccent_Custom_3                         : 'x XOR y With Overbar',
-
-        txtLimitLog_LogBase                        : 'Logarithm',
-        txtLimitLog_Log                            : 'Logarithm',
-        txtLimitLog_Lim                            : 'Limit',
-        txtLimitLog_Min                            : 'Minimum',
-        txtLimitLog_Max                            : 'Maximum',
-        txtLimitLog_Ln                             : 'Natural Logarithm',
-        txtLimitLog_Custom_1                       : 'Limit Example',
-        txtLimitLog_Custom_2                       : 'Maximum Example',
-
-        txtOperator_ColonEquals                    : 'Colon Equal',
-        txtOperator_EqualsEquals                   : 'Equal Equal',
-        txtOperator_PlusEquals                     : 'Plus Equal',
-        txtOperator_MinusEquals                    : 'Minus Equal',
-        txtOperator_Definition                     : 'Equal to By Definition',
-        txtOperator_UnitOfMeasure                  : 'Measured By',
-        txtOperator_DeltaEquals                    : 'Delta Equal To',
-        txtOperator_ArrowL_Top                     : 'Leftwards Arrow Above',
-        txtOperator_ArrowR_Top                     : 'Rightwards Arrow Above',
-        txtOperator_ArrowL_Bot                     : 'Leftwards Arrow Below',
-        txtOperator_ArrowR_Bot                     : 'Rightwards Arrow Below',
-        txtOperator_DoubleArrowL_Top               : 'Leftwards Arrow Above',
-        txtOperator_DoubleArrowR_Top               : 'Rightwards Arrow Above',
-        txtOperator_DoubleArrowL_Bot               : 'Leftwards Arrow Below',
-        txtOperator_DoubleArrowR_Bot               : 'Rightwards Arrow Below',
-        txtOperator_ArrowD_Top                     : 'Right-Left Arrow Above',
-        txtOperator_ArrowD_Bot                     : 'Right-Left Arrow Above',
-        txtOperator_DoubleArrowD_Top               : 'Right-Left Arrow Below',
-        txtOperator_DoubleArrowD_Bot               : 'Right-Left Arrow Below',
-        txtOperator_Custom_1                       : 'Yileds',
-        txtOperator_Custom_2                       : 'Delta Yields',
-
-        txtMatrix_1_2                              : '1x2 Empty Matrix',
-        txtMatrix_2_1                              : '2x1 Empty Matrix',
-        txtMatrix_1_3                              : '1x3 Empty Matrix',
-        txtMatrix_3_1                              : '3x1 Empty Matrix',
-        txtMatrix_2_2                              : '2x2 Empty Matrix',
-        txtMatrix_2_3                              : '2x3 Empty Matrix',
-        txtMatrix_3_2                              : '3x2 Empty Matrix',
-        txtMatrix_3_3                              : '3x3 Empty Matrix',
-        txtMatrix_Dots_Center                      : 'Midline Dots',
-        txtMatrix_Dots_Baseline                    : 'Baseline Dots',
-        txtMatrix_Dots_Vertical                    : 'Vertical Dots',
-        txtMatrix_Dots_Diagonal                    : 'Diagonal Dots',
-        txtMatrix_Identity_2                       : '2x2 Identity Matrix',
-        txtMatrix_Identity_2_NoZeros               : '3x3 Identity Matrix',
-        txtMatrix_Identity_3                       : '3x3 Identity Matrix',
-        txtMatrix_Identity_3_NoZeros               : '3x3 Identity Matrix',
-        txtMatrix_2_2_RoundBracket                 : 'Empty Matrix with Brackets',
-        txtMatrix_2_2_SquareBracket                : 'Empty Matrix with Brackets',
-        txtMatrix_2_2_LineBracket                  : 'Empty Matrix with Brackets',
-        txtMatrix_2_2_DLineBracket                 : 'Empty Matrix with Brackets',
-        txtMatrix_Flat_Round                       : 'Sparse Matrix',
-        txtMatrix_Flat_Square                      : 'Sparse Matrix',
-        txtExpandSort: 'The data next to the selection will not be sorted. Do you want to expand the selection to include the adjacent data or continue with sorting the currently selected cells only?',
-        txtExpand: 'Expand and sort',
-        txtSorting: 'Sorting',
-        txtSortSelected: 'Sort selected',
-        textLongOperation: 'Long operation',
-        warnLongOperation: 'The operation you are about to perform might take rather much time to complete.<br>Are you sure you want to continue?',
-        txtInvalidRange: 'ERROR! Invalid cells range',
-        errorMaxRows: 'ERROR! The maximum number of data series per chart is 255.',
-        errorStockChart: 'Incorrect row order. To build a stock chart place the data on the sheet in the following order:<br> opening price, max price, min price, closing price.',
-        textPivot: 'Pivot Table',
-        txtTable_TableStyleMedium: 'Table Style Medium',
-        txtTable_TableStyleDark: 'Table Style Dark',
-        txtTable_TableStyleLight: 'Table Style Light',
-        txtGroupTable_Custom: 'Custom',
-        txtGroupTable_Light: 'Light',
-        txtGroupTable_Medium: 'Medium',
-        txtGroupTable_Dark: 'Dark',
-        txtGroupCell_Custom: 'Custom',
-        txtGroupCell_GoodBadAndNeutral: 'Good, Bad, and Neutral',
-        txtGroupCell_DataAndModel: 'Data and Model',
-        txtGroupCell_TitlesAndHeadings: 'Titles and Headings',
-        txtGroupCell_ThemedCallStyles: 'Themed Call Styles',
-        txtGroupCell_NumberFormat: 'Number Format',
-        txtGroupCell_NoName: 'No name',
-        textInsert: 'Insert',
-        txtInsertCells: 'Insert Cells',
-        txtDeleteCells: 'Delete Cells',
-        errorComboSeries: 'To create a combination chart, select at least two series of data.',
-        textDirectional: 'Directional',
-        textShapes: 'Shapes',
-        textIndicator: 'Indicators',
-        textRating: 'Ratings',
-        txtLockSort: 'Data is found next to your selection, but you do not have sufficient permissions to change those cells.<br>Do you wish to continue with the current selection?',
-        textRecentlyUsed: 'Recently Used',
-        errorMaxPoints: 'The maximum number of points in series per chart is 4096.',
-        warnNoRecommended: 'To create a chart, select the cells that contain the data you\'d like to use.<br>If you have names for the rows and columns and you\'d like use them as labels, include them in your selection.'
-
+        onTabCollapse: function(tab) {
+            Common.UI.TooltipManager.closeTip('rtlDirection');
+        }
     }, SSE.Controllers.Toolbar || {}));
 });

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *    Controller for the viewport
  *
- *    Created by Julia Radzhabova on 26 March 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 26 March 2014
  *
  */
 
@@ -78,30 +77,23 @@ define([
                     'render:before' : function (toolbar) {
                         var config = PE.getController('Main').appOptions;
                         toolbar.setExtra('right', me.header.getPanel('right', config));
-                        if (!config.isEdit || config.customization && !!config.customization.compactHeader)
+                        if (!config.twoLevelHeader || config.compactHeader)
                             toolbar.setExtra('left', me.header.getPanel('left', config));
-                        var value = Common.localStorage.getBool("pe-settings-quick-print-button", true);
+                        me.toolbar = toolbar;
+                        /*var value = Common.localStorage.getBool("pe-settings-quick-print-button", true);
                         Common.Utils.InternalSettings.set("pe-settings-quick-print-button", value);
                         if (me.header && me.header.btnPrintQuick)
-                            me.header.btnPrintQuick[value ? 'show' : 'hide']();
+                            me.header.btnPrintQuick[value ? 'show' : 'hide']();*/
                     },
                     'view:compact'  : function (toolbar, state) {
                         me.viewport.vlayout.getItem('toolbar').height = state ?
                             Common.Utils.InternalSettings.get('toolbar-height-compact') : Common.Utils.InternalSettings.get('toolbar-height-normal');
                     },
                     'undo:disabled' : function (state) {
-                        if ( me.header.btnUndo ) {
-                            if ( me.header.btnUndo.keepState )
-                                me.header.btnUndo.keepState.disabled = state;
-                            else me.header.btnUndo.setDisabled(state);
-                        }
+                        me.header.lockHeaderBtns( 'undo', state, Common.enumLock.undoLock );
                     },
                     'redo:disabled' : function (state) {
-                        if ( me.header.btnRedo ) {
-                            if ( me.header.btnRedo.keepState )
-                                me.header.btnRedo.keepState.disabled = state;
-                            else me.header.btnRedo.setDisabled(state);
-                        }
+                        me.header.lockHeaderBtns( 'redo', state, Common.enumLock.redoLock );
                     },
                     'print:disabled' : function (state) {
                         if ( me.header.btnPrint )
@@ -112,10 +104,17 @@ define([
                     'save:disabled' : function (state) {
                         if ( me.header.btnSave )
                             me.header.btnSave.setDisabled(state);
+                    },
+                    'startover:disabled' : function (state) {
+                        if ( me.header.btnStartOver)
+                            me.header.btnStartOver.setDisabled(state);
                     }
                 }
             });
             Common.NotificationCenter.on('preview:start', this.onPreviewStart.bind(this));
+            Common.NotificationCenter.on('tabstyle:changed', this.onTabStyleChange.bind(this));
+            Common.NotificationCenter.on('tabbackground:changed', this.onTabBackgroundChange.bind(this));
+            this._isDisabledPreview = false;
         },
 
         setApi: function(api) {
@@ -135,7 +134,9 @@ define([
 
             this.api = new Asc.asc_docs_api({
                 'id-view'  : 'editor_sdk',
-                'translate': this.getApplication().getController('Main').translationTable
+                'translate': this.getApplication().getController('Main').translationTable,
+                'isRtlInterface': Common.UI.isRTL(),
+                'thumbnails-position': Common.UI.isRTL() ? 'right' : 'left'
             });
 
             this.header   = this.createView('Common.Views.Header', {
@@ -160,6 +161,7 @@ define([
             Common.NotificationCenter.on('app:face', this.onAppShowed.bind(this));
             Common.NotificationCenter.on('app:ready', this.onAppReady.bind(this));
             Common.NotificationCenter.on('search:show', _.bind(this.onSearchShow, this));
+            Common.NotificationCenter.on('uitheme:changed', this.onThemeChanged.bind(this));
         },
 
         onAppShowed: function (config) {
@@ -170,8 +172,6 @@ define([
             var $filemenu = $('.toolbar-fullview-panel');
             $filemenu.css('top', Common.UI.LayoutManager.isElementVisible('toolbar') ? _intvars.get('toolbar-height-tabs') : 0);
 
-            me.viewport.$el.attr('applang', me.appConfig.lang.split(/[\-_]/)[0]);
-
             if ( !config.isEdit ||
                 ( !Common.localStorage.itemExists("pe-compact-toolbar") &&
                     config.customization && config.customization.compactToolbar ))
@@ -179,7 +179,7 @@ define([
                 me.viewport.vlayout.getItem('toolbar').height = _intvars.get('toolbar-height-compact');
             }
 
-            if ( config.isEdit && (!(config.customization && config.customization.compactHeader))) {
+            if ( config.twoLevelHeader && !config.compactHeader) {
                 var $title = me.viewport.vlayout.getItem('title').el;
                 $title.html(me.header.getPanel('title', config)).show();
                 $title.find('.extra').html(me.header.getPanel('left', config));
@@ -199,13 +199,10 @@ define([
                 toolbar.btnCollabChanges = me.header.btnSave;
             }
 
-            if ( config.customization ) {
-                if ( config.customization.toolbarNoTabs )
-                    me.viewport.vlayout.getItem('toolbar').el.addClass('style-off-tabs');
-
-                if ( config.customization.toolbarHideFileName )
-                    me.viewport.vlayout.getItem('toolbar').el.addClass('style-skip-docname');
-            }
+            me.onTabStyleChange();
+            me.onTabBackgroundChange();
+            if ( config.customization && config.customization.toolbarHideFileName )
+                me.viewport.vlayout.getItem('toolbar').el.addClass('style-skip-docname');
 
             me.header.btnSearch.on('toggle', me.onSearchToggle.bind(this));
         },
@@ -255,10 +252,13 @@ define([
             Common.NotificationCenter.trigger('window:resize');
         },
 
-        onPreviewStart: function(slidenum, presenter, fromApiEvent) {
+        onPreviewStart: function(slidenum, presenter, fromApiEvent, isCurrent) {
             this.previewPanel = this.previewPanel || this.getView('DocumentPreview');
             var me = this,
-                isResized = false;
+                isResized = false,
+                print = PE.getController && PE.getController('Print');
+            
+            if (print && print._isPreviewVisible) return;
             
             var reporterObject = (presenter) ? PE.getController('Main').document : null;
             if (reporterObject) {
@@ -266,7 +266,18 @@ define([
                     reset: me.previewPanel.txtReset,
                     endSlideshow: me.previewPanel.txtEndSlideshow,
                     slideOf: me.previewPanel.slideIndexText,
-                    finalMessage: me.previewPanel.txtFinalMessage
+                    finalMessage: me.previewPanel.txtFinalMessage,
+                    pen: me.previewPanel.txtPen,
+                    highlighter: me.previewPanel.txtHighlighter,
+                    inkColor: me.previewPanel.txtInkColor,
+                    eraser: me.previewPanel.txtEraser,
+                    eraseScreen: me.previewPanel.txtEraseScreen,
+                    play: me.previewPanel.txtPlay,
+                    pause: me.previewPanel.txtPause,
+                    prevSlide: me.previewPanel.txtPrev,
+                    nextSlide: me.previewPanel.txtNext,
+                    pointer: me.previewPanel.txtPointer,
+                    draw: me.previewPanel.txtDraw,
                 };
                 reporterObject.token = me.api.asc_getSessionToken();
                 reporterObject.customization = me.viewport.mode.customization;
@@ -277,16 +288,17 @@ define([
                     Common.UI.Menu.Manager.hideAll();
                 }, 100);
                 this.previewPanel.show();
+                this.previewPanel.btnDraw && this.previewPanel.btnDraw.setDisabled(this._isDisabledPreview);
                 var _onWindowResize = function() {
                     if (isResized) return;
                     isResized = true;
                     Common.NotificationCenter.off('window:resize', _onWindowResize);
-                    me.api.StartDemonstration('presentation-preview', _.isNumber(slidenum) ? slidenum : 0, reporterObject);
+                    isCurrent ? me.api.StartDemonstrationFromCurrentSlide('presentation-preview', reporterObject) : me.api.StartDemonstrationFromBeginning('presentation-preview', reporterObject);
                     Common.component.Analytics.trackEvent('Viewport', 'Preview');
                 };
                 if (!me.viewport.mode.isDesktopApp && !Common.Utils.isIE11 && !presenter && !!document.fullscreenEnabled) {
                     Common.NotificationCenter.on('window:resize', _onWindowResize);
-                    !fromApiEvent && me.fullScreen(document.documentElement);
+                    !fromApiEvent && Common.Utils.startFullscreenForElement($("#pe-preview").get(0));
                     setTimeout(function(){
                         _onWindowResize();
                     }, 100);
@@ -295,34 +307,20 @@ define([
             }
         },
 
-        fullScreen: function(element) {
-            if (element) {
-                if(element.requestFullscreen) {
-                    element.requestFullscreen();
-                } else if(element.webkitRequestFullscreen) {
-                    element.webkitRequestFullscreen();
-                } else if(element.mozRequestFullScreen) {
-                    element.mozRequestFullScreen();
-                } else if(element.msRequestFullscreen) {
-                    element.msRequestFullscreen();
-                }
-            }
-        },
-
         onFileMenu: function (opts) {
             var me = this;
             var _need_disable =  opts == 'show';
 
-            me.header.lockHeaderBtns( 'undo', _need_disable );
-            me.header.lockHeaderBtns( 'redo', _need_disable );
+            me.header.lockHeaderBtns( 'undo', _need_disable, Common.enumLock.fileMenuOpened );
+            me.header.lockHeaderBtns( 'redo', _need_disable, Common.enumLock.fileMenuOpened );
             me.header.lockHeaderBtns( 'users', _need_disable );
         },
 
         applySettings: function () {
-            var value = Common.localStorage.getBool("pe-settings-quick-print-button", true);
-            Common.Utils.InternalSettings.set("pe-settings-quick-print-button", value);
-            if (this.header && this.header.btnPrintQuick)
-                this.header.btnPrintQuick[value ? 'show' : 'hide']();
+            // var value = Common.localStorage.getBool("pe-settings-quick-print-button", true);
+            // Common.Utils.InternalSettings.set("pe-settings-quick-print-button", value);
+            // if (this.header && this.header.btnPrintQuick)
+            //     this.header.btnPrintQuick[value ? 'show' : 'hide']();
         },
 
         onApiCoAuthoringDisconnect: function(enableDownload) {
@@ -384,6 +382,40 @@ define([
 
         isSearchBarVisible: function () {
             return this.searchBar && this.searchBar.isVisible();
+        },
+
+        onTabStyleChange: function (style) {
+            style = style || Common.Utils.InternalSettings.get("settings-tab-style");
+            this.viewport.vlayout.getItem('toolbar').el.toggleClass('lined-tabs', style==='line');
+        },
+
+        onTabBackgroundChange: function (background) {
+            background = background || Common.Utils.InternalSettings.get("settings-tab-background");
+            this.viewport.vlayout.getItem('toolbar').el.toggleClass('style-off-tabs', background==='toolbar');
+        },
+
+        setDisabledPreview: function(disable) {
+            this._isDisabledPreview = disable;
+        },
+
+        onThemeChanged: function () {
+            if (Common.UI.Themes.available()) {
+                var _intvars = Common.Utils.InternalSettings;
+                var $filemenu = $('.toolbar-fullview-panel');
+
+                const computed_style = window.getComputedStyle(document.body);
+                _intvars.set('toolbar-height-controls', parseInt(computed_style.getPropertyValue("--toolbar-height-controls") || 84));
+                _intvars.set('toolbar-height-normal', _intvars.get('toolbar-height-tabs') + _intvars.get('toolbar-height-controls'));
+                $filemenu.css('top', (Common.UI.LayoutManager.isElementVisible('toolbar') ? _intvars.get('toolbar-height-tabs') : 0) +
+                                     (this.appConfig.twoLevelHeader && !this.appConfig.compactHeader ? _intvars.get('document-title-height') : 0));
+
+                this.viewport.vlayout.getItem('toolbar').height = this.toolbar && this.toolbar.isCompact() ?
+                    _intvars.get('toolbar-height-compact') : _intvars.get('toolbar-height-normal');
+
+                this.viewport.vlayout.getItem('statusbar').height = parseInt(computed_style.getPropertyValue('--statusbar-height') || 25);
+
+                Common.NotificationCenter.trigger('layout:changed', 'toolbar');
+            }
         },
 
         textFitPage: 'Fit to Page',

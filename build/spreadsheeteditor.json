@@ -26,7 +26,6 @@
                         "underscore": "../vendor/underscore/underscore",
                         "backbone": "../vendor/backbone/backbone",
                         "text": "../vendor/requirejs-text/text",
-                        "bootstrap": "../vendor/bootstrap/dist/js/bootstrap",
                         "perfectscrollbar": "common/main/lib/mods/perfect-scrollbar",
                         "jmousewheel": "../vendor/perfect-scrollbar/src/jquery.mousewheel",
                         "xregexp": "empty:",
@@ -54,11 +53,6 @@
                                 "jquery"
                             ],
                             "exports": "Backbone"
-                        },
-                        "bootstrap": {
-                            "deps": [
-                                "jquery"
-                            ]
                         },
                         "perfectscrollbar": {
                             "deps": [
@@ -98,6 +92,30 @@
                         }
                     }
                 }
+            },
+            "postload": {
+                "options":{
+                    "baseUrl": "../apps/",
+                    "optimize": "none",
+                    "name": "../apps/spreadsheeteditor/main/app_pack.js",
+                    "out": "../deploy/web-apps/apps/spreadsheeteditor/main/code.js",
+                    "inlineText": true,
+                    "findNestedDependencies": false,
+                    "optimizeAllPluginResources": false,
+                    "paths": {
+                        "text": "../vendor/requirejs-text/text"
+                    }
+                }
+            },
+            "babel": {
+                "files": [
+                    {
+                        "expand": true,
+                        "cwd": "../deploy/web-apps/apps/spreadsheeteditor/main/",
+                        "src": "*.js",
+                        "dest": "../deploy/web-apps/apps/spreadsheeteditor/main/ie"
+                    }
+                ]
             }
         },
         "less": {
@@ -119,7 +137,7 @@
                     "cwd": "../apps/spreadsheeteditor/main/resources/img/",
                     "src": [
                         "**/*.{png,jpg,gif,ico}",
-                        "!toolbar/*x/**/*"
+                        "!toolbar/**/*x/**/*"
                     ],
                     "dest": "../deploy/web-apps/apps/spreadsheeteditor/main/resources/img/"
                 }
@@ -138,7 +156,7 @@
                     "cwd": "../apps/common/main/resources/img/",
                     "src": [
                         "**/*.{png,jpg,gif}",
-                        "!toolbar/*x/**/*"
+                        "!toolbar/**/*x/**/*"
                     ],
                     "dest": "../deploy/web-apps/apps/spreadsheeteditor/main/resources/img/"
                 }
@@ -197,7 +215,10 @@
                 {
                     "expand": true,
                     "cwd": "../apps/spreadsheeteditor/main/resources/img",
-                    "src": "**/*.svg",
+                    "src": [
+                        "**/*.svg",
+                        "!toolbar/**/*x/**/*"
+                    ],
                     "dest": "../deploy/web-apps/apps/spreadsheeteditor/main/resources/img"
                 }
             ],
@@ -339,12 +360,16 @@
                 "../apps/common/locale.js",
                 "../apps/common/Gateway.js",
                 "../apps/common/Analytics.js",
+                "../apps/common/main/lib/mods/dropdown.js",
+                "../apps/common/main/lib/mods/modal.js",
+                "../apps/common/main/lib/mods/tooltip.js",
                 "../apps/common/main/lib/util/LanguageInfo.js",
                 "../apps/common/embed/lib/util/LocalStorage.js",
                 "../apps/common/embed/lib/util/utils.js",
                 "../apps/common/embed/lib/view/LoadMask.js",
                 "../apps/common/embed/lib/view/modals.js",
                 "../apps/common/embed/lib/controller/modals.js",
+                "../apps/common/embed/lib/controller/Shortcuts.js",
                 "../apps/common/embed/lib/view/SearchBar.js",
                 "../apps/spreadsheeteditor/embed/js/SearchBar.js",
                 "../apps/spreadsheeteditor/embed/js/ApplicationView.js",

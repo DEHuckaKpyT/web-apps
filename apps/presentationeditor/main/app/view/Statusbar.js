@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  StatusBar View
  *
- *  Created by Maxim Kadushkin on 8 April 2014
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 8 April 2014
  *
  */
 
@@ -76,9 +75,9 @@ define([
 
         function _clickLanguage(menu, item) {
             this.btnLanguage.setCaption(item.caption);
-            this.langMenu.prevTip = item.value.value;
+            this.langMenu.prevTip = item.value;
 
-            this.fireEvent('langchanged', [this, item.value.code, item.caption]);
+            this.fireEvent('langchanged', [this, item.code, item.caption]);
         }
 
         PE.Views.Statusbar = Backbone.View.extend(_.extend({
@@ -121,14 +120,27 @@ define([
 
                 this.btnZoomDown = new Common.UI.Button({
                     el: $('#btn-zoom-down',this.el),
-                    hint: this.tipZoomOut+Common.Utils.String.platformKey('Ctrl+-'),
+                    hint: this.tipZoomOut,
                     hintAnchor: 'top'
                 });
+                PE.getController('Common.Controllers.Shortcuts').updateShortcutHints({
+                    ZoomOut: {
+                        btn: this.btnZoomDown,
+                        label: this.tipZoomOut
+                    }
+                });
+                
 
                 this.btnZoomUp = new Common.UI.Button({
                     el: $('#btn-zoom-up',this.el),
-                    hint: this.tipZoomIn+Common.Utils.String.platformKey('Ctrl++'),
+                    hint: this.tipZoomIn,
                     hintAnchor: 'top-right'
+                });
+                 PE.getController('Common.Controllers.Shortcuts').updateShortcutHints({
+                    ZoomIn: {
+                        btn: this.btnZoomUp,
+                        label: this.tipZoomIn
+                    }
                 });
 
                 this.cntZoom = new Common.UI.Button({
@@ -259,17 +271,21 @@ define([
                 });
 
                 this.langMenu = new Common.UI.MenuSimple({
-                    cls: 'lang-menu',
+                    cls: 'lang-menu shifted-right',
                     style: 'margin-top:-5px;',
                     restoreHeight: 285,
                     itemTemplate: _.template([
-                        '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value.value %>" class="<% if (checked) { %> checked <% } %>">',
-                        '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
-                        '<%= caption %>',
+                        '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value %>" class="<% if (checked) { %> checked <% } %>">',
+                            '<div>',
+                                '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
+                                '<%= caption %>',
+                            '</div>',
+                            '<label style="opacity: 0.6"><%= captionEn %></label>',
                         '</a>'
                     ].join('')),
                     menuAlign: 'bl-tl',
                     search: true,
+                    searchFields: ['caption', 'captionEn'],
                     focusToCheckedItem: true
                 });
 
@@ -277,7 +293,7 @@ define([
                     parentEl: $('#btn-cnt-lang', this.el),
                     cls         : 'btn-toolbar',
                     scaling     : false,
-                    caption     : 'English (United States)',
+                    caption     : 'English – United States',
                     hint: this.tipSetLang,
                     hintAnchor  : 'top-left',
                     disabled: true,
@@ -334,20 +350,39 @@ define([
                 this.getStatusLabel().text('');
             },
 
+            showSlideMasterStatus: function (show) {
+                if (show) {
+                    $('#status-label-pages').css('display', 'none');
+                    $('#status-label-slide-master').css('display', 'inline-block');
+                } else {
+                    $('#status-label-pages').css('display', 'inline-block');
+                    $('#status-label-slide-master').css('display', 'none');
+                }
+            },
+
             reloadLanguages: function(array) {
                 var arr = [],
                     saved = this.langMenu.saved;
                 _.each(array, function(item) {
                     arr.push({
                         caption     : item['displayValue'],
-                        value       : {value: item['value'], code: item['code']},
+                        captionEn   : item['displayValueEn'],
+                        value       : item['value'],
+                        code        : item['code'],
                         checkable   : true,
-                        checked     : saved == item['displayValue'],
                         spellcheck  : item['spellcheck']
                     });
                 });
+                this.langMenu.setRecent({
+                    count: Common.Utils.InternalSettings.get("app-settings-recent-langs-count") || 5,
+                    offset: Common.Utils.InternalSettings.get("app-settings-recent-langs-offset") || 0,
+                    key: 'app-settings-recent-langs',
+                    valueField: 'value'
+                });
                 this.langMenu.resetItems(arr);
                 if (this.langMenu.items.length>0) {
+                    var index = _.findIndex(this.langMenu.items, {caption: saved});
+                    (index>-1) && this.langMenu.setChecked(index, true);
                     this.btnLanguage.setDisabled(false || this._state.no_paragraph);
                 }
             },
@@ -356,9 +391,9 @@ define([
                 if (this.langMenu.prevTip != info.value && info.code !== undefined) {
                     this.btnLanguage.setCaption(info.displayValue);
                     this.langMenu.prevTip = info.value;
-                    var lang = _.find(this.langMenu.items, function(item) { return item.caption == info.displayValue; });
-                    if (lang) {
-                        this.langMenu.setChecked(this.langMenu.items.indexOf(lang), true);
+                    var index = _.findIndex(this.langMenu.items, {caption: info.displayValue});
+                    if (index>-1) {
+                        this.langMenu.setChecked(index, true);
                     } else {
                         this.langMenu.saved = info.displayValue;
                         this.langMenu.clearAll();
@@ -405,7 +440,8 @@ define([
             tipSetLang      : 'Set Text Language',
             textShowBegin: 'Show from Beginning',
             textShowCurrent: 'Show from Current slide',
-            textShowPresenterView: 'Show presenter view'
+            textShowPresenterView: 'Show presenter view',
+            textSlideMaster: 'Slide master'
         }, PE.Views.Statusbar || {}));
     }
 );

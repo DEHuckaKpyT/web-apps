@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,15 +34,13 @@
  *
  *    CellEditor Controller
  *
- *    Created by Maxim Kadushkin on 08 April 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 08 April 2014
  *
  */
 
 define([
     'core',
     'spreadsheeteditor/main/app/view/CellEditor',
-    'spreadsheeteditor/main/app/view/NameManagerDlg'
 ], function (Viewport) {
     'use strict';
 
@@ -75,13 +73,14 @@ define([
                     }.bind(this)
                 }
             });
+            Common.NotificationCenter.on('external:reshow', this.onExternalReshow.bind(this));
+            Common.NotificationCenter.on('uitheme:changed', this.onThemeChanged.bind(this));
         },
 
         setApi: function(api) {
             this.api = api;
 
             this.api.isCEditorFocused = false;
-            this.api.asc_registerCallback('asc_onSelectionNameChanged', _.bind(this.onApiCellSelection, this));
             this.api.asc_registerCallback('asc_onEditCell', _.bind(this.onApiEditCell, this));
             this.api.asc_registerCallback('asc_onEditorSelectionChanged', _.bind(this.onCellEditorTextChange, this));
             this.api.asc_registerCallback('asc_onCoAuthoringDisconnect', _.bind(this.onApiDisconnect,this));
@@ -96,12 +95,14 @@ define([
         setMode: function(mode) {
             this.mode = mode;
 
+            this.editor.setMode(mode);
             this.editor.$btnfunc[this.mode.isEdit?'removeClass':'addClass']('disabled');
             this.editor.btnNamedRanges.setVisible(this.mode.isEdit && !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle);
 
             if ( this.mode.isEdit ) {
                 this.api.asc_registerCallback('asc_onSelectionChanged', _.bind(this.onApiSelectionChanged, this));
             }
+            !this.mode.isEditDiagram && this.api.asc_registerCallback('asc_onSelectionNameChanged', _.bind(this.onApiCellSelection, this));
         },
 
         onInputKeyDown: function(e) {
@@ -176,6 +177,8 @@ define([
         },
 
         onApiDisconnect: function() {
+            if (!this.mode) return;
+            
             this.mode.isEdit = false;
 
             var controller = this.getApplication().getController('FormulaDialog');
@@ -241,9 +244,11 @@ define([
         },
 
         expandEditorField: function() {
-            if ( Math.floor(this.editor.$el.height()) > 19) {
+            var editorMinHeight = parseFloat(this.editor.$el.css('min-height')) || 20;
+            editorMinHeight -= (parseFloat(this.editor.$el.css('border-bottom-width')) || 0);
+            if ( Math.floor(this.editor.$el.height()) > editorMinHeight) {
                 this.editor.keep_height = this.editor.$el.height();
-                this.editor.$el.height(19);
+                this.editor.$el.height(editorMinHeight);
                 this.editor.$el.removeClass('expanded');
                 this.editor.$btnexpand['removeClass']('btn-collapse');
                 Common.localStorage.setBool('sse-celleditor-expand', false);
@@ -256,6 +261,23 @@ define([
             this.onCellEditorTextChange();
             Common.NotificationCenter.trigger('layout:changed', 'celleditor');
             Common.NotificationCenter.trigger('edit:complete', this.editor, {restorefocus:true});
+        },
+
+        onExternalReshow: function () {
+            this.changeCellEditorHeight();
+        },
+
+        onThemeChanged: function () {
+            this.changeCellEditorHeight();
+        },
+
+        changeCellEditorHeight: function() {
+            if (!Common.localStorage.getBool('sse-celleditor-expand')) {
+                var editorMinHeight = parseFloat(this.editor.$el.css('min-height')) || 20;
+                editorMinHeight -= (parseFloat(this.editor.$el.css('border-bottom-width')) || 0);
+                this.editor.$el.height(editorMinHeight);
+                Common.NotificationCenter.trigger('layout:changed', 'celleditor');
+            }
         },
 
         onInsertFunction: function() {
@@ -333,15 +355,15 @@ define([
         },
 
         SetDisabled: function(disabled) {
-            this.editor.$btnfunc[!disabled && this.mode.isEdit && !this.isUserProtected ?'removeClass':'addClass']('disabled');
-            this.editor.btnNamedRanges.setVisible(!disabled && this.mode.isEdit && !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle);
+            this.editor.$btnfunc[!disabled && this.mode && this.mode.isEdit && !this.isUserProtected ?'removeClass':'addClass']('disabled');
+            this.editor.btnNamedRanges.setVisible(!disabled && this.mode && this.mode.isEdit && !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle);
         },
 
         setPreviewMode: function(mode) {
             if (this.viewmode === mode) return;
             this.viewmode = mode;
-            this.editor.$btnfunc[!mode && this.mode.isEdit && !this.isUserProtected?'removeClass':'addClass']('disabled');
-            this.editor.cellNameDisabled(mode && !(this.mode.isEdit && !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle));
+            this.editor.$btnfunc[!mode && this.mode && this.mode.isEdit && !this.isUserProtected?'removeClass':'addClass']('disabled');
+            this.editor.cellNameDisabled(mode && !(this.mode && this.mode.isEdit && !this.mode.isEditDiagram && !this.mode.isEditMailMerge && !this.mode.isEditOle));
         }
     });
 });

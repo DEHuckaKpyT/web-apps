@@ -35,6 +35,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
         Common.Notifications.on('toolbar:activatecontrols', activateControls);
         Common.Notifications.on('toolbar:deactivateeditcontrols', deactivateEditControls);
         Common.Notifications.on('goback', goBack);
+        Common.Notifications.on('close', onRequestClose);
 
         if (isDisconnected) {
             f7.popover.close();
@@ -46,6 +47,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
             Common.Notifications.off('toolbar:activatecontrols', activateControls);
             Common.Notifications.off('toolbar:deactivateeditcontrols', deactivateEditControls);
             Common.Notifications.off('goback', goBack);
+            Common.Notifications.off('close', onRequestClose);
         }
     });
 
@@ -53,10 +55,11 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
     const [isShowBack, setShowBack] = useState(appOptions.canBackToFolder);
     const loadConfig = (data) => {
         if (data && data.config && data.config.canBackToFolder !== false &&
-            data.config.customization && data.config.customization.goback &&
-            (data.config.customization.goback.url || data.config.customization.goback.requestClose && data.config.canRequestClose))
-        {
-            setShowBack(true);
+            data.config.customization && data.config.customization.goback) {
+            const canback = data.config.customization.close === undefined ?
+                data.config.customization.goback.url || data.config.customization.goback.requestClose && data.config.canRequestClose :
+                data.config.customization.goback.url && !data.config.customization.goback.requestClose;
+            canback && setShowBack(true);
         }
     };
 
@@ -192,7 +195,7 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
             ],
             on: {
                 opened: () => {
-                    const nameDoc = docTitle.split('.')[0];
+                    const nameDoc = docTitle.slice(0, docTitle.lastIndexOf("."));
                     const titleField = document.querySelector('#modal-title');
                     const btnChangeTitle = document.querySelector('.btn-change-title');
 
@@ -252,10 +255,27 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
         }
     }
 
+    const forceDesktopMode = () => {
+        f7.dialog.create({
+            text: t('View.Settings.textRestartApplication'),
+            title: t('Toolbar.textSwitchToDesktop'),
+            buttons: [
+                {
+                    text: t('View.Add.textCancel')
+                },
+                {
+                    text: t('Toolbar.btnRestartNow'),
+                    onClick: () => Common.Gateway.switchEditorType('desktop', true),
+                }
+            ]}
+        ).open();
+    }
+
     return (
         <ToolbarView 
             openOptions={props.openOptions}
             isEdit={appOptions.isEdit}
+            isDrawMode={appOptions.isDrawMode}
             docTitle={docTitle}
             isShowBack={isShowBack}
             isCanUndo={isCanUndo}
@@ -275,6 +295,8 @@ const ToolbarController = inject('storeAppOptions', 'users', 'storeFocusObjects'
             closeHistory={closeHistory}
             isOpenModal={props.isOpenModal}
             changeTitleHandler={changeTitleHandler}
+            forceDesktopMode={forceDesktopMode}
+            isHiddenFileName={appOptions.config?.customization?.toolbarHideFileName ?? false}
         />
     )
 }));

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,16 +32,11 @@
 /**
  *  RemoveDuplicatesDialog.js
  *
- *  Created by Julia Radzhabova on 07.04.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 07.04.2020
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/ListView'
-], function () {
+define([], function () {
     'use strict';
 
     SSE.Views.RemoveDuplicatesDialog = Common.UI.Window.extend(_.extend({
@@ -100,11 +95,8 @@ define([
                 tabindex: 1,
                 template: _.template(['<div class="listview inner" style=""></div>'].join('')),
                 itemTemplate: _.template([
-                    '<div>',
-                        '<label class="checkbox-indeterminate" style="position:absolute;">',
-                            '<input id="rdcheckbox-<%= id %>" type="checkbox" class="button__checkbox">',
-                            '<label for="rdcheckbox-<%= id %>" class="checkbox__shape"></label>',
-                        '</label>',
+                    '<div class="has-checkbox">',
+                        Common.UI.CheckBoxTemplate,
                         '<div id="<%= id %>" class="list-item margin-left-20" style="pointer-events:none; display: flex;">',
                             '<div style="flex-grow: 1;"><%= Common.Utils.String.htmlEncode(value) %></div>',
                         '</div>',
@@ -182,7 +174,7 @@ define([
                 target = $(event.currentTarget).find('.list-item');
 
                 if (target.length) {
-                    bound = target.get(0).getBoundingClientRect();
+                    bound = Common.Utils.getBoundingClientRect(target.get(0));
                     var _clientX = event.clientX*Common.Utils.zoom(),
                         _clientY = event.clientY*Common.Utils.zoom();
                     if (bound.left < _clientX && _clientX < bound.right &&

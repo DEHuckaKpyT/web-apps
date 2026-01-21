@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,15 +32,11 @@
 /**
  *  PageMarginsDialog.js
  *
- *  Created by Julia Radzhabova on 2/12/16
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 2/12/16
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/MetricSpinner'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     DE.Views.PageMarginsDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -58,7 +54,10 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="height: 245px;">',
+                '<div class="box">',
+                '<table cols="2" style="width: 100%;">',
+                '<tr style="vertical-align: top;">',
+                '<td>',
                     '<div class="float-left">',
                         '<label class="font-weight-bold">' + this.textTitle + '</label>',
                         '<div style="margin-top: 2px;">',
@@ -97,10 +96,15 @@ define([
                             '<div id="page-margins-cmb-multiple-pages"></div>',
                         '</div>',
                     '</div>',
+                '</td>',
+                '<td>',
                     '<div class="float-right">',
                         '<label class="font-weight-bold">' + this.textPreview + '</label>',
                         '<div id="page-margins-preview" style="margin-top: 2px; height: 120px; width: 162px;"></div>',
                     '</div>',
+                '</td>',
+                '</tr>',
+                '</table>',
                 '</div>'
             ].join('');
 

@@ -109,8 +109,8 @@ const StatusbarController = inject('storeWorksheets', 'storeFocusObjects', 'user
     return null;
 }));
 
-const Statusbar = inject('storeWorksheets', 'storeAppOptions', 'users')(observer(props => {
-    const {storeWorksheets, storeAppOptions, users} = props;
+const Statusbar = inject('storeWorksheets', 'storeAppOptions', 'users', 'storeSpreadsheetInfo')(observer(props => {
+    const {storeWorksheets, storeAppOptions, users, storeSpreadsheetInfo} = props;
     const {t} = useTranslation();
     const _t = t('Statusbar', {returnObjects: true});
     const isEdit = storeAppOptions.isEdit;
@@ -161,7 +161,26 @@ const Statusbar = inject('storeWorksheets', 'storeAppOptions', 'users')(observer
     const onAddTabClicked = () => {
         const api = Common.EditorApi.get();
         api.asc_closeCellEditor();
-        api.asc_addWorksheet(createSheetName());
+
+        if ((storeSpreadsheetInfo.dataDoc?.fileType ?? '').toLowerCase() === 'csv') {
+            f7.dialog.create({
+                title: _t.notcriticalErrorTitle,
+                text: _t.warnAddSheetCsv,
+                buttons: [
+                    {
+                        text: _t.textCancel
+                    },
+                    {
+                        text: _t.textContinue,
+                        onClick: () => {
+                            api.asc_addWorksheet(createSheetName());
+                        }
+                    }
+                ]
+            }).open();
+        } else {
+            api.asc_addWorksheet(createSheetName());
+        }
     };
 
     const onTabClick = (i, target) => {
@@ -231,7 +250,7 @@ const Statusbar = inject('storeWorksheets', 'storeAppOptions', 'users')(observer
                     '<div class="item-content item-input" style="margin-top: 15px; position: relative; padding-bottom: 10px;"><div class="item-inner"><div class="item-input-wrap" style="min-height: initial; width: 100%;"><input type="text" style="width: 100%;" name="modal-sheet-name" value="' + current + '" maxlength="31" placeholder="' + _t.textSheetName + '" /></div></div></div>',
                 buttons: [
                     {
-                        text: 'OK',
+                        text: _t.textOk,
                         bold: true,
                         onClick: function () {
                             let s = $$('input[name="modal-sheet-name"]').val(),

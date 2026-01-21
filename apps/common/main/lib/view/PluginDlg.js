@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,9 +30,7 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 17.05.16
- * Time: 15:38
  */
 
 if (Common === undefined)
@@ -40,12 +38,7 @@ if (Common === undefined)
 
 Common.Views = Common.Views || {};
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/BaseView',
-    'common/main/lib/component/Layout',
-    'common/main/lib/component/Window'
-], function (template) {
+define([], function () {
     'use strict';
 
     Common.Views.PluginDlg = Common.UI.Window.extend(_.extend({
@@ -78,6 +71,7 @@ define([
             this.url = options.url || '';
             this.loader = (options.loader!==undefined) ? options.loader : true;
             this.frameId = options.frameId || 'plugin_iframe';
+            this.guid = options.guid;
             Common.UI.Window.prototype.initialize.call(this, _options);
         },
 
@@ -94,6 +88,7 @@ define([
             this._headerFooterHeight += ((parseInt(this.$window.css('border-top-width')) + parseInt(this.$window.css('border-bottom-width'))));
 
             if (Common.Utils.innerHeight()-this.bordersOffset*2 < this.options.contentHeight + this._headerFooterHeight) {
+                this._restoreHeight = this.options.contentHeight + this._headerFooterHeight;
                 this.options.contentHeight = Common.Utils.innerHeight()-this.bordersOffset*2 - this._headerFooterHeight;
                 this.boxEl.css('height', this.options.contentHeight);
             }
@@ -125,7 +120,7 @@ define([
 
             iframe.src = this.url;
             pholder.append(iframe);
-
+            this.frame = iframe;
             this.on('resizing', function(args){
                 me.boxEl.css('height', parseInt(me.$window.css('height')) - me._headerFooterHeight);
             });
@@ -137,6 +132,10 @@ define([
             this.on('close', function() {
                 $(window).off('resize', onMainWindowResize);
             });
+
+            if(this.options.isCanDocked) {
+                this.showDockedButton();
+            }
         },
 
         _onLoad: function() {
@@ -160,8 +159,10 @@ define([
             Common.UI.Window.prototype.setHeight.call(this, height + this._headerFooterHeight);
             Common.UI.Window.prototype.setWidth.call(this, width + borders_width);
 
-            this.$window.css('left',(maxWidth - width - borders_width) / 2);
-            this.$window.css('top',(maxHeight - height - this._headerFooterHeight) / 2);
+            if (this.getLeft() + width + borders_width > maxWidth)
+                this.$window.css('left', Math.max(0, maxWidth - width - borders_width - this.bordersOffset));
+            if (this.getTop() + height + this._headerFooterHeight > maxHeight)
+                this.$window.css('top', Math.max(0, maxHeight - height - this._headerFooterHeight - this.bordersOffset));
 
             this._restoreHeight = this._restoreWidth = undefined;
         },
@@ -207,6 +208,26 @@ define([
             }
         },
 
+        showDockedButton: function() {
+            var header = this.$window.find('.header .tools:not(.left)'),
+                // header = this.$window.find('.header .tools.left'),
+                btnId = 'id-plugindlg-docked',
+                btn = header.find('#' + btnId);
+            if (btn.length < 1) {
+                var iconCls = 'btn-pin';
+                btn = $('<div id="' + btnId + '" class="tool custom toolbar__icon ' + iconCls + '"></div>');
+                btn.on('click', _.bind(function() {
+                    var tip = btn.data('bs.tooltip');
+                    if (tip) tip.dontShow = true;
+                    this.fireEvent('docked', this.frameId);
+                }, this));
+                header.append(btn);
+                btn.tooltip({title: this.textDock, placement: 'cursor', zIndex: parseInt(this.$window.css('z-index')) + 10});
+            }
+            btn.show();
+            header.removeClass('hidden');
+        },
+
         showButton: function(id, toRight) {
             var header = this.$window.find(toRight ? '.header .tools:not(.left)' : '.header .tools.left'),
                 btn = header.find('#id-plugindlg-' + id);
@@ -229,6 +250,11 @@ define([
             }
         },
 
-        textLoading : 'Loading'
+        enablePointerEvents: function(enable) {
+            this.frame && (this.frame.style.pointerEvents = enable ? "" : "none");
+        },
+
+        textLoading : 'Loading',
+        textDock: 'Pin plugin'
     }, Common.Views.PluginDlg || {}));
 });

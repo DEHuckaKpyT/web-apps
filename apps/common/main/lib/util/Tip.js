@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -76,7 +76,7 @@
 *
 */
 
-(function ($) {
+const tip = function ($) {
     var _superclass = $.fn.tooltip;
     _superclass.prototype = $.fn.tooltip.Constructor.prototype;
 
@@ -132,6 +132,7 @@
 
                 if (this.options.arrow === false) $tip.addClass('arrow-free');
                 if (this.options.cls) $tip.addClass(this.options.cls);
+                if (this.options.dir) $tip.attr('dir', this.options.dir);
 
                 var placementEx = (typeof this.options.placement !== 'function') ? /^([a-zA-Z]+)-?([a-zA-Z]*)$/.exec(this.options.placement) : null;
                 if (!at && placementEx && !placementEx[2].length) {
@@ -171,7 +172,7 @@
                             tp.top = innerHeight - $tip.height() - 30;
                         }
 
-                        $tip.offset(tp).addClass('in');
+                        Common.Utils.setOffset($tip, tp).addClass('in');
                     } else {
                         var pos = this.getPosition();
 
@@ -241,7 +242,7 @@
             clearTimeout(self.timeout);
             self.hoverState = 'in';
 
-            if (this._updateTitle) {
+            if (this._updateTitle!==undefined) {
                 this.tip().find('.tooltip-inner')[this.options.html ? 'html' : 'text'](this.options.title);
                 this._updateTitle = undefined;
             }
@@ -309,4 +310,8 @@
     return this;
   };
 
-})(window.jQuery);
+}
+
+// require(['common/main/lib/mods/tooltip'], function (t) {
+    tip(window.jQuery);
+// });

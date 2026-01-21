@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  HyperlinkSettingsDialog.js
  *
- *  Created by Julia Radzhabova on 4/19/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/19/14
  *
  */
 
@@ -46,13 +45,7 @@ var c_oHyperlinkType = {
     WebLink: 1
 };
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window',
-    'common/main/lib/component/TreeView'
-], function () { 'use strict';
-
+define([], function () { 'use strict';
     PE.Views.HyperlinkSettingsDialog = Common.UI.Window.extend(_.extend({
         options: {
             width: 350,
@@ -68,8 +61,8 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="height: 319px;">',
-                    '<div class="input-row" style="margin-bottom: 10px;">',
+                '<div class="box" style="height: 330px;">',
+                    '<div style="margin-bottom: 10px;">',
                         '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-external">', this.textExternalLink,'</button>',
                         '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-internal">', this.textInternalLink,'</button>',
                     '</div>',
@@ -99,7 +92,9 @@ define([
             this.options.tpl = _.template(this.template)(this.options);
             this.slides = this.options.slides;
             this.api = this.options.api;
+            this.type = options.type;
             this.urlType = AscCommon.c_oAscUrlType.Invalid;
+            this.appOptions = this.options.appOptions;
 
             Common.UI.Window.prototype.initialize.call(this, this.options);
         },
@@ -127,12 +122,17 @@ define([
             });
             me.btnInternal.on('click', _.bind(me.onLinkTypeClick, me, c_oHyperlinkType.InternalLink));
 
-            me.inputUrl = new Common.UI.InputField({
+            Common.UI.GroupedButtons([me.btnExternal, me.btnInternal]);
+
+            var config = {
                 el          : $('#id-dlg-hyperlink-url'),
                 allowBlank  : false,
                 blankError  : me.txtEmpty,
                 validateOnBlur: false,
                 style       : 'width: 100%;',
+                iconCls: 'toolbar__icon btn-browse',
+                placeHolder: me.appOptions.isDesktopApp ? me.txtUrlPlaceholder : '',
+                btnHint: me.textSelectFile,
                 validation  : function(value) {
                     var trimmed = $.trim(value);
                     if (trimmed.length>2083) return me.txtSizeLimit;
@@ -140,7 +140,8 @@ define([
                     me.urlType = me.api.asc_getUrlType(trimmed);
                     return (me.urlType!==AscCommon.c_oAscUrlType.Invalid) ? true : me.txtNotUrl;
                 }
-            });
+            };
+            me.inputUrl = me.appOptions.isDesktopApp ? new Common.UI.InputFieldBtn(config) : new Common.UI.InputField(config);
             me.inputUrl._input.on('input', function (e) {
                 me.isInputFirstChange && me.inputUrl.showError();
                 me.isInputFirstChange = false;
@@ -151,6 +152,7 @@ define([
                 }
                 me.btnOk.setDisabled($.trim(val)=='');
             });
+            me.appOptions.isDesktopApp && me.inputUrl.on('button:click', _.bind(me.onSelectFile, me));
 
             me.inputDisplay = new Common.UI.InputField({
                 el          : $('#id-dlg-hyperlink-display'),
@@ -197,7 +199,7 @@ define([
             if (props) {
                 var me = this;
 
-                var type = me.parseUrl(props.get_Value());
+                var type = (me.type!==undefined) ? me.type : me.parseUrl(props.get_Value());
                 (type == c_oHyperlinkType.WebLink) ? me.btnExternal.toggle(true) : me.btnInternal.toggle(true);
                 me.ShowHideElem(type, props.get_Value());
                 
@@ -423,6 +425,26 @@ define([
             }
         },
 
+        onSelectFile: function() {
+            var me = this;
+            if (me.api) {
+                var callback = function(result) {
+                    if (result) {
+                        me.inputUrl.setValue(result);
+                        if (me.inputUrl.checkValidate() !== true)
+                            me.isInputFirstChange = true;
+                        if (me.isAutoUpdate) {
+                            me.inputDisplay.setValue(result);
+                            me.isTextChanged = true;
+                        }
+                        me.btnOk.setDisabled($.trim(result)=='');
+                    }
+                };
+
+                me.api.asc_getFilePath(callback); // change sdk function
+            }
+        },
+
         textTitle:          'Hyperlink Settings',
         textInternalLink:   'Place in Document',
         textExternalLink:   'External Link',
@@ -441,6 +463,8 @@ define([
         txtLast:            'Last Slide',
         textDefault:        'Selected text',
         textSlides: 'Slides',
-        txtSizeLimit: 'This field is limited to 2083 characters'
+        txtSizeLimit: 'This field is limited to 2083 characters',
+        txtUrlPlaceholder: 'Enter the web address or select a file',
+        textSelectFile: 'Select file'
     }, PE.Views.HyperlinkSettingsDialog || {}))
 });

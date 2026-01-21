@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -29,13 +29,6 @@
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
  */
-/**
- *  StatusBar View
- *
- *  Created by Maxim Kadushkin
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
- *
- */
 
 define([
     'text!documenteditor/main/app/template/StatusBar.template',
@@ -45,7 +38,8 @@ define([
     'tip',
     'common/main/lib/component/Menu',
     'common/main/lib/component/Window',
-    'documenteditor/main/app/model/Pages'
+    'documenteditor/main/app/model/Pages',
+    'common/main/lib/component/InputField',
  ],
     function(template, $, _, Backbone){
         'use strict';
@@ -66,17 +60,25 @@ define([
         }
 
         function _clickLanguage(menu, item) {
-            this.langMenu.prevTip = item.value.value;
+            this.langMenu.prevTip = item.value;
             this.btnLanguage.setCaption(item.caption);
-            this.fireEvent('langchanged', [this, item.value.code, item.caption]);
+            this.fireEvent('langchanged', [this, item.code, item.caption]);
         }
 
         function _onAppReady(config) {
             var me = this;
             me.btnZoomToPage.updateHint(me.tipFitPage);
             me.btnZoomToWidth.updateHint(me.tipFitWidth);
-            me.btnZoomDown.updateHint(me.tipZoomOut + Common.Utils.String.platformKey('Ctrl+-'));
-            me.btnZoomUp.updateHint(me.tipZoomIn + Common.Utils.String.platformKey('Ctrl++'));
+            DE.getController('Common.Controllers.Shortcuts').updateShortcutHints({
+                ZoomOut: {
+                    btn: me.btnZoomDown,
+                    label: me.tipZoomOut
+                },
+                ZoomIn: {
+                    btn: me.btnZoomUp,
+                    label: me.tipZoomIn
+                }
+            });
 
             if (config.canUseSelectHandTools) {
                 me.btnSelectTool.updateHint(me.tipSelectTool);
@@ -236,7 +238,7 @@ define([
                 this.btnLanguage = new Common.UI.Button({
                     cls         : 'btn-toolbar',
                     scaling     : false,
-                    caption     : 'English (United States)',
+                    caption     : 'English – United States',
                     hintAnchor  : 'top-left',
                     disabled: true,
                     dataHint    : '0',
@@ -245,20 +247,23 @@ define([
                 });
 
                 this.langMenu = new Common.UI.MenuSimple({
-                    cls: 'lang-menu',
+                    cls: 'lang-menu shifted-right',
                     style: 'margin-top:-5px;',
                     restoreHeight: 285,
                     itemTemplate: _.template([
-                        '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value.value %>" class="<% if (checked) { %> checked <% } %>">',
-                            '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
-                            '<%= caption %>',
+                        '<a id="<%= id %>" tabindex="-1" type="menuitem" langval="<%= value %>" class="<% if (checked) { %> checked <% } %>">',
+                            '<div>',
+                                '<i class="icon <% if (spellcheck) { %> toolbar__icon btn-ic-docspell spellcheck-lang <% } %>"></i>',
+                                '<%= caption %>',
+                            '</div>',
+                            '<label style="opacity: 0.6"><%= captionEn %></label>',
                         '</a>'
                     ].join('')),
                     menuAlign: 'bl-tl',
                     search: true,
+                    searchFields: ['caption', 'captionEn'],
                     focusToCheckedItem: true
                 });
-
                 this.zoomMenu = new Common.UI.Menu({
                     style: 'margin-top:-5px;',
                     menuAlign: 'bl-tl',
@@ -407,14 +412,23 @@ define([
                 _.each(array, function(item) {
                     arr.push({
                         caption     : item['displayValue'],
-                        value       : {value: item['value'], code: item['code']},
+                        captionEn   : item['displayValueEn'],
+                        value       : item['value'],
+                        code        : item['code'],
                         checkable   : true,
-                        checked     : saved == item['displayValue'],
                         spellcheck  : item['spellcheck']
                     });
                 });
+                this.langMenu.setRecent({
+                    count: Common.Utils.InternalSettings.get("app-settings-recent-langs-count") || 5,
+                    offset: Common.Utils.InternalSettings.get("app-settings-recent-langs-offset") || 0,
+                    key: 'app-settings-recent-langs',
+                    valueField: 'value'
+                });
                 this.langMenu.resetItems(arr);
                 if (this.langMenu.items.length>0) {
+                    var index = _.findIndex(this.langMenu.items, {caption: saved});
+                    (index>-1) && this.langMenu.setChecked(index, true);
                     var isProtected = this._state.docProtection.isReadOnly || this._state.docProtection.isFormsOnly || this._state.docProtection.isCommentsOnly;
                     this.btnLanguage.setDisabled(this._isDisabled || !!this.mode.isDisconnected || isProtected);
                 }
@@ -425,9 +439,9 @@ define([
                     this.btnLanguage.setCaption(info.displayValue);
                     this.langMenu.prevTip = info.value;
 
-                    var lang = _.find(this.langMenu.items, function(item) { return item.caption == info.displayValue; });
-                    if (lang) {
-                        this.langMenu.setChecked(this.langMenu.items.indexOf(lang), true);
+                    var index = _.findIndex(this.langMenu.items, {caption: info.displayValue});
+                    if (index>-1) {
+                        this.langMenu.setChecked(index, true);
                     } else {
                         this.langMenu.saved = info.displayValue;
                         this.langMenu.clearAll();

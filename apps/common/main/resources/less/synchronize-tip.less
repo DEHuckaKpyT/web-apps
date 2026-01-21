@@ -2,6 +2,22 @@
     position: fixed;
     z-index: @zindex-navbar + 2;
 
+    .tip-header {
+        .font-size-medium();
+        .font-weight-bold();
+        margin-bottom: 4px;
+
+        span {
+            .font-size-large();
+            background: #4A87E7;
+            color: #fff;
+            padding: calc(@scaled-one-px-value-ie * 2) 6px calc(@scaled-one-px-value-ie * 4);
+            padding: calc(@scaled-one-px-value * 2) 6px calc(@scaled-one-px-value * 4);
+            margin-right: 6px;
+            border-radius: 4px;
+        }
+    }
+
     &:not(.simple) {
         max-width: 300px;
     }
@@ -23,19 +39,16 @@
 
     &.closable {
         .asc-synchronizetip {
-            .padding-x(15px, 30px);
+            .padding-x(15px, 25px);
         }
     }
 
     &.theme-color {
         .asc-synchronizetip {
-            background-color: @header-background-color-ie;
-            background-color: @header-background-color;
+            .header-background-color();
             color: @text-toolbar-header-ie;
             color: @text-toolbar-header;
-            border-color: @header-background-color-ie;
-            border-color: @header-background-color;
-
+            .header-border-color();
             .close {
                 &:before, &:after {
                     background-color: @text-toolbar-header-ie;
@@ -45,14 +58,11 @@
         }
 
         .tip-arrow:before {
-            background-color: @header-background-color-ie;
-            background-color: @header-background-color;
-            border-color: @header-background-color-ie !important;
-            border-color: @header-background-color !important;
+            .header-background-color();
+            .header-border-color();
         }
         .tip-arrow:after {
-            border-color: @header-background-color-ie !important;
-            border-color: @header-background-color !important;
+            .header-border-color();
         }
     }
 
@@ -109,9 +119,10 @@
             display: inline-block;
             border: 1px solid @border-regular-control-ie;
             border: 1px solid @border-regular-control;
-            border-radius: 2px;
+            border-radius: @border-radius-button-normal-ie;
+            border-radius: @border-radius-button-normal;
             padding: 3px 12px;
-            margin-top: 10px;
+            margin-top: 12px;
             &:hover {
                 background-color: @highlight-button-hover-ie;
                 background-color: @highlight-button-hover;
@@ -480,7 +491,7 @@
 }
 
 .asc-synchronizetip .show-link {
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .show-link label {

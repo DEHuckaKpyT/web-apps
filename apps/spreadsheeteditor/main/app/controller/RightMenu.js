@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  RightMenu.js
  *
- *  Created by Julia Radzhabova on 3/27/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 3/27/14
  *
  */
 
@@ -53,7 +52,7 @@ define([
 
         initialize: function() {
             this.editMode = true;
-            this._state = {wsLock: false, wsProps: []};
+            this._state = {wsLock: false, wsProps: [], inPivot: false};
 
             this.addListeners({
                 'Toolbar': {
@@ -61,16 +60,24 @@ define([
                     'insertshape': this.onInsertShape.bind(this),
                     'insertchart':  this.onInsertChart.bind(this),
                     'inserttextart': this.onInsertTextArt.bind(this),
-                    'inserttable': this.onInsertTable.bind(this)
+                    // 'inserttable': this.onInsertTable.bind(this)
                 },
                 'RightMenu': {
-                    'rightmenuclick': this.onRightMenuClick
+                    'rightmenuclick': this.onRightMenuClick,
+                    'button:click':  _.bind(this.onBtnCategoryClick, this)
                 },
                 'PivotTable': {
                     'insertpivot': this.onInsertPivot
                 },
                 'ViewTab': {
                     'rightmenu:hide': this.onRightMenuHide.bind(this)
+                },
+                'Common.Views.Plugins': {
+                    'plugins:addtoright': _.bind(this.addNewPlugin, this),
+                    'pluginsright:open': _.bind(this.openPlugin, this),
+                    'pluginsright:close': _.bind(this.closePlugin, this),
+                    'pluginsright:hide': _.bind(this.onHidePlugins, this),
+                    'pluginsright:updateicons': _.bind(this.updatePluginButtonsIcons, this)
                 }
             });
 
@@ -93,7 +100,7 @@ define([
             this._settings[Common.Utils.documentSettingsType.Shape] =     {panelId: "id-shape-settings",      panel: rightMenu.shapeSettings,    btn: rightMenu.btnShape,       hidden: 1, locked: false};
             this._settings[Common.Utils.documentSettingsType.TextArt] =   {panelId: "id-textart-settings",    panel: rightMenu.textartSettings,  btn: rightMenu.btnTextArt,     hidden: 1, locked: false};
             this._settings[Common.Utils.documentSettingsType.Chart] =     {panelId: "id-chart-settings",      panel: rightMenu.chartSettings,    btn: rightMenu.btnChart,       hidden: 1, locked: false};
-            this._settings[Common.Utils.documentSettingsType.Table] =     {panelId: "id-table-settings",      panel: rightMenu.tableSettings,    btn: rightMenu.btnTable,       hidden: 1, locked: false};
+            // this._settings[Common.Utils.documentSettingsType.Table] =     {panelId: "id-table-settings",      panel: rightMenu.tableSettings,    btn: rightMenu.btnTable,       hidden: 1, locked: false};
             this._settings[Common.Utils.documentSettingsType.Pivot] =     {panelId: "id-pivot-settings",      panel: rightMenu.pivotSettings,    btn: rightMenu.btnPivot,       hidden: 1, locked: false};
             this._settings[Common.Utils.documentSettingsType.Signature] = {panelId: "id-signature-settings",  panel: rightMenu.signatureSettings, btn: rightMenu.btnSignature,  hidden: 1, props: {}, locked: false};
             this._settings[Common.Utils.documentSettingsType.Cell] =      {panelId: "id-cell-settings",       panel: rightMenu.cellSettings,     btn: rightMenu.btnCell,        hidden: 1, locked: false};
@@ -125,12 +132,12 @@ define([
                         Common.Utils.InternalSettings.set("sse-rightpanel-active-pivot", 1);
                     else if (type == Common.Utils.documentSettingsType.Chart && !this._settings[Common.Utils.documentSettingsType.Cell].hidden) {//sparkline
                         Common.Utils.InternalSettings.set("sse-rightpanel-active-spark", 2);
-                        if (!this._settings[Common.Utils.documentSettingsType.Table].hidden) {
-                            Common.Utils.InternalSettings.set("sse-rightpanel-active-table", Math.min(Common.Utils.InternalSettings.get("sse-rightpanel-active-table"), 1));
-                        }
+                        // if (!this._settings[Common.Utils.documentSettingsType.Table].hidden) {
+                        //     Common.Utils.InternalSettings.set("sse-rightpanel-active-table", Math.min(Common.Utils.InternalSettings.get("sse-rightpanel-active-table"), 1));
+                        // }
                     } else if (Common.Utils.documentSettingsType.Cell) {
-                        if (!this._settings[Common.Utils.documentSettingsType.Table].hidden)
-                            Common.Utils.InternalSettings.set("sse-rightpanel-active-table", 0);
+                        // if (!this._settings[Common.Utils.documentSettingsType.Table].hidden)
+                        //     Common.Utils.InternalSettings.set("sse-rightpanel-active-table", 0);
                         if (!this._settings[Common.Utils.documentSettingsType.Pivot].hidden)
                             Common.Utils.InternalSettings.set("sse-rightpanel-active-pivot", 0);
                         if (!this._settings[Common.Utils.documentSettingsType.Chart].hidden)
@@ -146,6 +153,7 @@ define([
                 }
             }
             Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+            Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
         },
 
         onSelectionChanged: function(info) {
@@ -223,18 +231,18 @@ define([
                 this._settings[settingsType].props = value;
                 this._settings[settingsType].hidden = 0;
 
-                if (!this._settings[Common.Utils.documentSettingsType.Signature].locked) // lock Signature, если хотя бы один объект locked
+                if (!this._settings[Common.Utils.documentSettingsType.Signature].locked) // lock Signature, if at least one object is locked
                     this._settings[Common.Utils.documentSettingsType.Signature].locked = value.asc_getLocked();
-                if (!this._settings[Common.Utils.documentSettingsType.Paragraph].locked) // lock Paragraph, если хотя бы у одной автофигуры заблокирован текст
+                if (!this._settings[Common.Utils.documentSettingsType.Paragraph].locked) // lock Paragraph, if at least one shape has locked text
                     this._settings[Common.Utils.documentSettingsType.Paragraph].locked = this._state.wsProps['Objects'] && locktext;
             }
 
-            if (formatTableInfo) {
-                settingsType = Common.Utils.documentSettingsType.Table;
-                this._settings[settingsType].props = formatTableInfo;
-                this._settings[settingsType].locked = isTableLocked;
-                this._settings[settingsType].hidden = 0;
-            }
+            // if (formatTableInfo) {
+            //     settingsType = Common.Utils.documentSettingsType.Table;
+            //     // this._settings[settingsType].props = formatTableInfo;
+            //     this._settings[settingsType].locked = isTableLocked;
+            //     this._settings[settingsType].hidden = 0;
+            // }
 
             if (sparkLineInfo) {
                 settingsType = Common.Utils.documentSettingsType.Chart;
@@ -244,11 +252,20 @@ define([
                 this._settings[settingsType].btn.updateHint(this.rightmenu.txtSparklineSettings);
             }
 
-            if (pivotInfo && this.rightmenu.mode.canFeaturePivot) {
+            if (this.rightmenu.mode.canFeaturePivot) {
                 settingsType = Common.Utils.documentSettingsType.Pivot;
-                this._settings[settingsType].props = pivotInfo;
-                this._settings[settingsType].locked = isPivotLocked; // disable pivot settings
-                this._settings[settingsType].hidden = 0;
+                if (pivotInfo) {
+                    this._settings[settingsType].props = pivotInfo;
+                    this._settings[settingsType].locked = isPivotLocked; // disable pivot settings
+                    this._settings[settingsType].hidden = 0;
+                }
+                if (this._state.inPivot !== !this._settings[settingsType].hidden) {
+                    this.rightmenu.clearMoreButton();
+                    this.rightmenu.btnPivot.setVisible(!this._settings[settingsType].hidden);
+                    this.rightmenu.setButtons();
+                    this.rightmenu.setMoreButton();
+                    this._state.inPivot = !this._settings[settingsType].hidden;
+                }
             }
 
             if (SelectedObjects.length<=0 && cellInfo) { // cell is selected
@@ -296,19 +313,21 @@ define([
                 }
 
                 if (priorityactive<0 && !this._settings[Common.Utils.documentSettingsType.Cell].hidden &&
-                                        (!this._settings[Common.Utils.documentSettingsType.Table].hidden || !this._settings[Common.Utils.documentSettingsType.Pivot].hidden ||
+                                        (!this._settings[Common.Utils.documentSettingsType.Pivot].hidden ||
                                          !this._settings[Common.Utils.documentSettingsType.Chart].hidden)) {
                     var tableactive = Common.Utils.InternalSettings.get("sse-rightpanel-active-table"),
                         pivotactive = Common.Utils.InternalSettings.get("sse-rightpanel-active-pivot"),
                         sparkactive = Common.Utils.InternalSettings.get("sse-rightpanel-active-spark");
-                    if (!this._settings[Common.Utils.documentSettingsType.Table].hidden && !this._settings[Common.Utils.documentSettingsType.Chart].hidden) {
-                        if (tableactive == sparkactive)
-                            priorityactive = (tableactive===0) ? Common.Utils.documentSettingsType.Cell : Common.Utils.documentSettingsType.Chart;
-                        else
-                            priorityactive = (tableactive > sparkactive) ? Common.Utils.documentSettingsType.Table : Common.Utils.documentSettingsType.Chart;
-                    } else if (!this._settings[Common.Utils.documentSettingsType.Table].hidden) {
-                        priorityactive = (tableactive===0) ? Common.Utils.documentSettingsType.Cell : Common.Utils.documentSettingsType.Table;
-                    } else if (!this._settings[Common.Utils.documentSettingsType.Chart].hidden) {
+                    // if (!this._settings[Common.Utils.documentSettingsType.Table].hidden && !this._settings[Common.Utils.documentSettingsType.Chart].hidden) {
+                    //     if (tableactive == sparkactive)
+                    //         priorityactive = (tableactive===0) ? Common.Utils.documentSettingsType.Cell : Common.Utils.documentSettingsType.Chart;
+                    //     else
+                    //         priorityactive = (tableactive > sparkactive) ? Common.Utils.documentSettingsType.Table : Common.Utils.documentSettingsType.Chart;
+                    // }
+                    // else if (!this._settings[Common.Utils.documentSettingsType.Table].hidden) {
+                    //     priorityactive = (tableactive===0) ? Common.Utils.documentSettingsType.Cell : Common.Utils.documentSettingsType.Table;
+                    // } 
+                    if (!this._settings[Common.Utils.documentSettingsType.Chart].hidden) {
                         priorityactive = (sparkactive===0) ? Common.Utils.documentSettingsType.Cell : Common.Utils.documentSettingsType.Chart;
                     }
                     if (!this._settings[Common.Utils.documentSettingsType.Pivot].hidden)
@@ -336,8 +355,8 @@ define([
 
             this._settings[Common.Utils.documentSettingsType.Image].needShow = false;
             this._settings[Common.Utils.documentSettingsType.Chart].needShow = false;
-            this._settings[Common.Utils.documentSettingsType.Table].needShow = false;
-            this._settings[Common.Utils.documentSettingsType.Pivot].needShow = false;
+            // this._settings[Common.Utils.documentSettingsType.Table].needShow = false;
+            pivotInfo && (this._settings[Common.Utils.documentSettingsType.Pivot].needShow = false);
         },
 
         onCoAuthoringDisconnect: function() {
@@ -361,12 +380,14 @@ define([
             this._settings[Common.Utils.documentSettingsType.TextArt].needShow = true;
         },
 
-        onInsertTable:  function() {
-            // this._settings[Common.Utils.documentSettingsType.Table].needShow = true;
-        },
+        // onInsertTable:  function() {
+        //     // this._settings[Common.Utils.documentSettingsType.Table].needShow = true;
+        // },
 
         onInsertPivot:  function() {
-            // this._settings[Common.Utils.documentSettingsType.Pivot].needShow = true;
+            this._settings[Common.Utils.documentSettingsType.Pivot].needShow = true;
+            Common.Utils.InternalSettings.set("sse-rightpanel-active-pivot", 1);
+            this._openRightMenu = true;
         },
 
         UpdateThemeColors:  function() {
@@ -449,7 +470,7 @@ define([
                 this.rightmenu.shapeSettings.disableControls(disabled);
                 this.rightmenu.imageSettings.disableControls(disabled);
                 this.rightmenu.chartSettings.disableControls(disabled);
-                this.rightmenu.tableSettings.disableControls(disabled);
+                // this.rightmenu.tableSettings.disableControls(disabled);
                 this.rightmenu.pivotSettings.disableControls(disabled);
                 this.rightmenu.cellSettings.disableControls(disabled);
                 this.rightmenu.slicerSettings.disableControls(disabled);
@@ -461,7 +482,7 @@ define([
 
                 if (disabled) {
                     this.rightmenu.btnText.setDisabled(disabled);
-                    this.rightmenu.btnTable.setDisabled(disabled);
+                    // this.rightmenu.btnTable.setDisabled(disabled);
                     this.rightmenu.btnImage.setDisabled(disabled);
                     this.rightmenu.btnShape.setDisabled(disabled);
                     this.rightmenu.btnTextArt.setDisabled(disabled);
@@ -515,11 +536,64 @@ define([
                     this.onSelectionChanged(this.api.asc_getCellInfo());
                     this._lastVisibleSettings = undefined;
                 }
+                !view && this.rightmenu.fireEvent('view:hide', [this, !status]);
                 Common.localStorage.setBool('sse-hidden-rightmenu', !status);
             }
 
             Common.NotificationCenter.trigger('layout:changed', 'main');
             Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
-        }
+        },
+
+        onRightMenuOpen: function(type) {
+            if (this._settings[type]===undefined || this._settings[type].hidden || this._settings[type].btn.isDisabled() || this._settings[type].panelId===this.rightmenu.GetActivePane()) return;
+
+            this.tryToShowRightMenu();
+            this.rightmenu.SetActivePane(type, true);
+            this._settings[type].panel.ChangeSettings.call(this._settings[type].panel, this._settings[type].props);
+            this.rightmenu.updateScroller();
+        },
+
+        tryToShowRightMenu: function() {
+            if (this.rightmenu && this.rightmenu.mode && (!this.rightmenu.mode.canBrandingExt || !this.rightmenu.mode.customization || this.rightmenu.mode.customization.rightMenu !== false) && Common.UI.LayoutManager.isElementVisible('rightMenu') &&
+                !this.rightmenu.mode.isEditMailMerge && !this.rightmenu.mode.isEditDiagram && !this.rightmenu.mode.isEditOle)
+                this.onRightMenuHide(null, true);
+        },
+
+        addNewPlugin: function (button, $button, $panel) {
+            this.rightmenu.insertButton(button, $button);
+            this.rightmenu.insertPanel($panel);
+        },
+
+        openPlugin: function (guid) {
+            this.rightmenu.openPlugin(guid);
+        },
+
+        closePlugin: function (guid) {
+            this.rightmenu.closePlugin(guid);
+            this.rightmenu.onBtnMenuClick();
+            Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+            this.rightmenu.fireEvent('editcomplete', this.rightmenu);
+        },
+
+        onHidePlugins: function() {
+            Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+        },
+
+        updatePluginButtonsIcons: function (icons) {
+            this.rightmenu.updatePluginButtonsIcons(icons);
+        },
+
+        onBtnCategoryClick: function (btn) {
+            if (btn.options.type === 'plugin' && !btn.isDisabled()) {
+                this.rightmenu.onBtnMenuClick(btn);
+                if (btn.pressed) {
+                    this.rightmenu.fireEvent('plugins:showpanel', [btn.options.value]); // show plugin panel
+                } else {
+                    this.rightmenu.fireEvent('plugins:hidepanel', [btn.options.value]);
+                }
+                Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
+                this.rightmenu.fireEvent('editcomplete', this.rightmenu);
+            }
+        },
     });
 });

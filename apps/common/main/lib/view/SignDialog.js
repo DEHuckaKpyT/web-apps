@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  SignDialog.js
  *
- *  Created by Julia Radzhabova on 5/19/17
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 5/19/17
  *
  */
 
@@ -41,12 +40,7 @@
 if (Common === undefined)
     var Common = {};
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window',
-    'common/main/lib/component/ComboBoxFonts'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     Common.Views.SignDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -89,9 +83,9 @@ define([
                             '<label>' + this.textInputName + '</label>',
                         '</div>',
                         '<div id="id-dlg-sign-name" class="input-row" style="margin-bottom: 5px;"></div>',
-                        '<div id="id-dlg-sign-fonts" class="input-row" style="display: inline-block;"></div>',
-                        '<div id="id-dlg-sign-font-size" class="input-row margin-left-3" style="display: inline-block;"></div>',
-                        '<div id="id-dlg-sign-bold" class="margin-left-3" style="display: inline-block;"></div>','<div id="id-dlg-sign-italic" class="margin-left-3" style="display: inline-block;"></div>',
+                        '<div id="id-dlg-sign-fonts" class="input-row" style="display: inline-block;vertical-align: middle;"></div>',
+                        '<div id="id-dlg-sign-font-size" class="input-row margin-left-3" style="display: inline-block;vertical-align: middle;"></div>',
+                        '<div id="id-dlg-sign-bold" class="margin-left-3" style="display: inline-block;vertical-align: middle;"></div>','<div id="id-dlg-sign-italic" class="margin-left-3" style="display: inline-block;vertical-align: middle;"></div>',
                         '<div style="margin: 10px 0 5px 0;">',
                             '<label>' + this.textUseImage + '</label>',
                         '</div>',
@@ -141,9 +135,9 @@ define([
             me.cmbFonts = new Common.UI.ComboBoxFonts({
                 el          : $('#id-dlg-sign-fonts'),
                 cls         : 'input-group-nr',
-                style       : 'width: 234px;',
+                style       : 'width: 230px;',
                 menuCls     : 'scrollable-menu',
-                menuStyle   : 'min-width: 234px;max-height: 270px;',
+                menuStyle   : 'min-width: 230px;max-height: 270px;',
                 store       : new Common.Collections.Fonts(),
                 recent      : 0,
                 takeFocusOnClose: true,
@@ -158,9 +152,9 @@ define([
             this.cmbFontSize = new Common.UI.ComboBox({
                 el: $('#id-dlg-sign-font-size'),
                 cls: 'input-group-nr',
-                style: 'width: 55px;',
+                style: 'width: 50px;',
                 menuCls     : 'scrollable-menu',
-                menuStyle: 'min-width: 55px;max-height: 270px;',
+                menuStyle: 'min-width: 50px;max-height: 270px;',
                 hint: this.tipFontSize,
                 takeFocusOnClose: true,
                 data: [

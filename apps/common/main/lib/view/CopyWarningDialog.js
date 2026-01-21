@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  CopyWarningDialog.js
  *
- *  Created by Alexander Yuzhin on 4/15/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/15/14
  *
  */
 
@@ -41,9 +40,7 @@
 if (Common === undefined)
     var Common = {};
 
-define([
-    'common/main/lib/component/Window'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     Common.Views.CopyWarningDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -58,20 +55,31 @@ define([
                 buttons: ['ok']
             }, options || {});
 
+            const app = (window.DE || window.PE || window.SSE || window.PDFE || window.VE);
+            const shortcutsController =  app.getController('Common.Controllers.Shortcuts');
+
+            const keysShortcuts = { Copy: '', Cut: '', Paste: ''};
+            for (const actionType in keysShortcuts) {
+                const shortcuts = shortcutsController.getShortcutsByActionType(actionType);
+                if(shortcuts && shortcuts[0]) {
+                    keysShortcuts[actionType] = shortcuts[0].keys.join('+');
+                }
+            }
+
             this.template = [
                 '<div class="box">',
                     '<p class="message">' + this.textMsg + '</p>',
                     '<div class="hotkeys">',
                         '<div>',
-                            '<p class="hotkey">' + Common.Utils.String.platformKey('Ctrl+C', '{0}') + '</p>',
+                            '<p class="hotkey">' + keysShortcuts.Copy + '</p>',
                             '<p class="message">' + this.textToCopy + '</p>',
                         '</div>',
                         '<div>',
-                        '<p class="hotkey">' + Common.Utils.String.platformKey('Ctrl+X', '{0}') + '</p>',
+                        '<p class="hotkey">' + keysShortcuts.Cut + '</p>',
                             '<p class="message">' + this.textToCut + '</p>',
                         '</div>',
                         '<div>',
-                            '<p class="hotkey">' + Common.Utils.String.platformKey('Ctrl+V', '{0}') + '</p>',
+                            '<p class="hotkey">' + keysShortcuts.Paste + '</p>',
                             '<p class="message">' + this.textToPaste + '</p>',
                         '</div>',
                     '</div>',

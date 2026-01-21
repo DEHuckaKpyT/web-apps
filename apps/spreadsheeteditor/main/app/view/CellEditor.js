@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *    CellEdit.js
  *
- *    Created by Maxim Kadushkin on 04 April 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 04 April 2014
  *
  */
 
@@ -65,7 +64,7 @@ define([
                 })
             });
             this.btnNamedRanges.setVisible(false);
-            this.btnNamedRanges.menu.setOffset(Common.UI.isRTL() ? 81 : -81);
+            this.btnNamedRanges.menu.setOffset(Common.UI.isRTL() ? 84 : -84);
 
             this.$cellname = $('#ce-cell-name', this.el);
             this.$btnexpand = $('#ce-btn-expand', this.el);
@@ -95,6 +94,11 @@ define([
             return this;
         },
 
+        setMode: function(mode) {
+            this.mode = mode;
+            this.mode.isEditDiagram && this.cellNameDisabled(true);
+        },
+
         updateCellInfo: function(info) {
             if (info) {
                 this.$cellname.val(typeof(info)=='string' ? info : info.asc_getName());
@@ -102,6 +106,7 @@ define([
         },
 
         cellNameDisabled: function(disabled){
+            if (this.mode && this.mode.isEditDiagram) disabled = true;
             (disabled) ? this.$cellname.attr('disabled', 'disabled') : this.$cellname.removeAttr('disabled');
             this.btnNamedRanges.setDisabled(disabled);
         },

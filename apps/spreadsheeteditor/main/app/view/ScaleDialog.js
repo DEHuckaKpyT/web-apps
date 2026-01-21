@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,15 +32,11 @@
 /**
  *  ScaleDialog.js
  *
- *  Created by Julia Svinareva on 21/08/19
- *  Copyright (c) 2019 Ascensio System SIA. All rights reserved.
+ *  Created on 21/08/19
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/MetricSpinner'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.ScaleDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -67,11 +63,11 @@ define([
                 '<div id="radio-fit-to" style="margin-bottom: 4px;"></div>',
                 '<div class="padding-left-22">',
                     '<div>',
-                        '<label style="height: 22px;width: 55px;padding-top: 4px;display: inline-block;margin-bottom: 4px;">' + this.textWidth + '</label>',
+                        '<label style="width: 55px;padding-top: 4px;display: inline-block;">' + this.textWidth + '</label>',
                         '<div id="scale-width" style="display: inline-block;margin-bottom: 4px;"></div>',
                     '</div>',
                     '<div>',
-                        '<label style="height: 22px;width: 55px;padding-top: 4px;display: inline-block;margin-bottom: 16px;">' + this.textHeight + '</label>',
+                        '<label style="width: 55px;padding-top: 4px;display: inline-block;">' + this.textHeight + '</label>',
                         '<div id="scale-height" style="display: inline-block;margin-bottom: 16px;"></div>',
                     '</div>',
                 '</div>',

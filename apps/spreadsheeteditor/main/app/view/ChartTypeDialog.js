@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,16 +33,12 @@
 /**
  *  ChartTypeDialog.js
  *
- *  Created by Julia Radzhabova on 03.12.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 03.12.2020
  *
  */
 
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/ListView',
-    'common/main/lib/view/AdvancedSettingsWindow'
+    'common/main/lib/view/AdvancedSettingsWindow',
 ], function () { 'use strict';
 
     var _CustomItem = Common.UI.DataViewItem.extend({
@@ -78,7 +74,7 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                contentStyle: 'padding: 0 10px;',
+                contentStyle: 'padding: 5px 5px 0;',
                 contentTemplate: _.template([
                     '<div class="settings-panel active">',
                         '<div class="inner-content">',
@@ -231,7 +227,7 @@ define([
         },
 
         close: function () {
-            this.api.asc_onCloseChartFrame();
+            this.api.asc_onCloseFrameEditor();
             this.api.asc_unregisterCallback('asc_onAddChartStylesPreview', this.wrapEvents.onAddChartStylesPreview);
             Common.Views.AdvancedSettingsWindow.prototype.close.apply(this, arguments);
         },

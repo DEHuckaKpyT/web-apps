@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *  Select Codepage for open CSV/TXT format file.
  *
- *  Created by Alexey.Musinov on 29/04/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 29/04/14
  *
  */
 
@@ -58,7 +57,7 @@ define([
                 warning         : options.warning,
                 codepages       : options.codepages,
                 warningMsg      : options.warningMsg,
-                width           : options.preview ? 414 : (options.type !== Common.Utils.importTextType.DRM) ? 340 : (options.warning ? 420 : 280),
+                width           : options.preview ? 414 : (options.type !== Common.Utils.importTextType.DRM) ? 340 : (options.warning ? 420 : 335),
                 header          : true,
                 cls             : 'modal-dlg open-dlg',
                 contentTemplate : '',
@@ -147,6 +146,7 @@ define([
             this.settings       =   _options.settings;
             this.api            =   _options.api;
             this.validatePwd    =   _options.validatePwd || false;
+            this.detectedDelimiter = false;
 
             _options.tpl        =   _.template(this.template)(_options);
 
@@ -184,7 +184,7 @@ define([
                 } else {
                     this.initCodePages();
                     if (this.preview) {
-                        (this.previewData) ? this.previewCallback(this.previewData) : this.updatePreview();
+                        (this.previewData) ? this.textCallback(this.previewData) : this.updatePreview();
                     }
                 }
                 if (this.type == Common.Utils.importTextType.Data) {
@@ -259,13 +259,16 @@ define([
                         delimiter = this.cmbDelimiter ? this.cmbDelimiter.getValue() : null,
                         delimiterChar = (delimiter == -1) ? this.inputDelimiter.getValue() : null;
                     (delimiter == -1) && (delimiter = null);
-                    if (!this.closable && this.type == Common.Utils.importTextType.TXT) { //save last encoding only for opening txt files
-                        Common.localStorage.setItem("de-settings-open-encoding", encoding);
-                    }
-                    if (this.type === Common.Utils.importTextType.CSV) { // only for csv files
-                        Common.localStorage.setItem("sse-settings-csv-delimiter", delimiter === null ? -1 : delimiter);
-                        Common.localStorage.setItem("sse-settings-csv-delimiter-char", delimiterChar || '');
-                        Common.localStorage.setItem("sse-settings-csv-encoding", encoding);
+                    if (this.type === Common.Utils.importTextType.TXT) { //save last encoding only for txt files
+                        this._isEncodingChanged && Common.localStorage.setItem("de-settings-open-encoding", encoding);
+                    } else if (this.type === Common.Utils.importTextType.CSV) { // only for csv files
+                        this._isDelimChanged && Common.localStorage.setItem("sse-settings-csv-delimiter", delimiter === null ? -1 : delimiter);
+                        this._isDelimCharChanged && Common.localStorage.setItem("sse-settings-csv-delimiter-char", delimiterChar || '');
+                        this._isEncodingChanged && Common.localStorage.setItem("sse-settings-csv-encoding", encoding);
+                    } else if (this.type === Common.Utils.importTextType.Paste || this.type === Common.Utils.importTextType.Columns || this.type === Common.Utils.importTextType.Data) {
+                        this._isDelimChanged && Common.localStorage.setItem("sse-settings-data-delimiter", delimiter === null ? -1 : delimiter);
+                        this._isDelimCharChanged && Common.localStorage.setItem("sse-settings-data-delimiter-char", delimiterChar || '');
+                        this._isEncodingChanged && Common.localStorage.setItem("sse-settings-data-encoding", encoding);
                     }
 
                     var decimal = this.separatorOptions ? this.separatorOptions.decimal : undefined,
@@ -287,7 +290,7 @@ define([
         },
 
         initCodePages: function () {
-            var i, c, codepage, encodedata = [], listItems = [], length = 0, lcid_width = 0;
+            var i, c, codepage, encodedata = [], listItems = [], length = 0, lcid_width = 0, utf8 = 0;
 
             if (this.codepages) {
                 encodedata = [];
@@ -297,6 +300,7 @@ define([
                     c[0] = codepage.asc_getCodePage();
                     c[1] = codepage.asc_getCodePageName();
                     c[2] = codepage.asc_getLcid();
+                    (c[2]===65001) && (utf8 = i);
 
                     encodedata.push(c);
                 }
@@ -338,17 +342,22 @@ define([
                 });
 
                 this.cmbEncoding.setDisabled(false);
-                var encoding = (this.settings && this.settings.asc_getCodePage()) ? this.settings.asc_getCodePage() : encodedata[0][0];
-                if (!this.closable && this.type == Common.Utils.importTextType.TXT) { // only for opening txt files
-                    var value = Common.localStorage.getItem("de-settings-open-encoding");
-                    value && (encoding = parseInt(value));
-                } else if (this.type === Common.Utils.importTextType.CSV) { // only for csv files
-                    var value = Common.localStorage.getItem("sse-settings-csv-encoding");
-                    value && (encoding = parseInt(value));
+                var encoding = (this.settings && this.settings.asc_getCodePage()) ? this.settings.asc_getCodePage() : encodedata[utf8][0];
+                if (encoding===-1) {
+                    if (this.type == Common.Utils.importTextType.TXT) { // only for opening txt files
+                        var value = Common.localStorage.getItem("de-settings-open-encoding");
+                        value && (encoding = parseInt(value));
+                    } else if (this.type === Common.Utils.importTextType.CSV) { // only for csv files
+                        var value = Common.localStorage.getItem("sse-settings-csv-encoding");
+                        value && (encoding = parseInt(value));
+                    } else if (this.type === Common.Utils.importTextType.Data) {
+                        var value = Common.localStorage.getItem("sse-settings-data-encoding");
+                        value && (encoding = parseInt(value));
+                    }
+                    (encoding===-1) && (encoding = encodedata[utf8][0]);
                 }
                 this.cmbEncoding.setValue(encoding);
-                if (this.preview)
-                    this.cmbEncoding.on('selected', _.bind(this.onCmbEncodingSelect, this));
+                this.cmbEncoding.on('selected', _.bind(this.onCmbEncodingSelect, this));
 
                 var ul = this.cmbEncoding.cmpEl.find('ul'),
                     a = ul.find('li:nth(0) a'),
@@ -357,15 +366,17 @@ define([
             }
 
             if (this.type == Common.Utils.importTextType.CSV || this.type == Common.Utils.importTextType.Paste || this.type == Common.Utils.importTextType.Columns || this.type == Common.Utils.importTextType.Data) {
-                var delimiter = this.settings && this.settings.asc_getDelimiter() ? this.settings.asc_getDelimiter() : 4,
+                var delimiter = '',
+                    delimiterChar = '';
+                if (!this.preview) { // don't need to detect delimiter (save to csv)
+                    delimiter = this.settings && this.settings.asc_getDelimiter() ? this.settings.asc_getDelimiter() : 4,
                     delimiterChar = this.settings && this.settings.asc_getDelimiterChar() ? this.settings.asc_getDelimiterChar() : '';
-                if (this.type == Common.Utils.importTextType.CSV) { // only for csv files
-                    var value = Common.localStorage.getItem("sse-settings-csv-delimiter");
+                    var value = Common.localStorage.getItem(this.type == Common.Utils.importTextType.CSV ? "sse-settings-csv-delimiter" : "sse-settings-data-delimiter");
                     if (value) {
                         value = parseInt(value);
                         if (!isNaN(value)) {
                             delimiter = value;
-                            (delimiter===-1) && (delimiterChar = Common.localStorage.getItem("sse-settings-csv-delimiter-char") || '');
+                            (delimiter===-1) && (delimiterChar = Common.localStorage.getItem(this.type == Common.Utils.importTextType.CSV ? "sse-settings-csv-delimiter-char" : "sse-settings-data-delimiter-char") || '');
                         }
                     }
                 }
@@ -385,7 +396,7 @@ define([
                     editable: false,
                     takeFocusOnClose: true
                 });
-                this.cmbDelimiter.setValue( delimiter);
+                this.cmbDelimiter.setValue(delimiter);
                 this.cmbDelimiter.on('selected', _.bind(this.onCmbDelimiterSelect, this));
 
                 this.inputDelimiter = new Common.UI.InputField({
@@ -397,8 +408,7 @@ define([
                     value: delimiterChar
                 });
                 this.inputDelimiter.setVisible(delimiter===-1);
-                if (this.preview)
-                    this.inputDelimiter.on ('changing', _.bind(this.updatePreview, this));
+                this.inputDelimiter.on ('changing', _.bind(this.onInputCharChanging, this));
 
                 if (this.type == Common.Utils.importTextType.Paste || this.type == Common.Utils.importTextType.Columns || this.type == Common.Utils.importTextType.Data) {
                     this.btnAdvanced = new Common.UI.Button({
@@ -415,28 +425,45 @@ define([
 
             var encoding = (this.cmbEncoding && !this.cmbEncoding.isDisabled()) ? this.cmbEncoding.getValue() :
                 ((this.settings && this.settings.asc_getCodePage()) ? this.settings.asc_getCodePage() : 0);
-            var delimiter = this.cmbDelimiter ? this.cmbDelimiter.getValue() : null,
-                delimiterChar = (delimiter == -1) ? this.inputDelimiter.getValue() : null;
-            (delimiter == -1) && (delimiter = null);
 
+            switch (this.type) {
+                case Common.Utils.importTextType.CSV:
+                case Common.Utils.importTextType.TXT:
+                case Common.Utils.importTextType.Data:
+                    this.api.asc_decodeBuffer(this.preview, encoding, _.bind(this.textCallback, this));
+                    break;
+                case Common.Utils.importTextType.Paste:
+                case Common.Utils.importTextType.Columns:
+                    this.api.asc_TextImport(encoding, _.bind(this.textCallback, this), this.type == Common.Utils.importTextType.Paste);
+                    break;
+            }
+        },
+
+        textCallback: function(text) {
+            var delimiter,
+                delimiterChar,
+                encoding = (this.cmbEncoding && !this.cmbEncoding.isDisabled()) ? this.cmbEncoding.getValue() :
+                           ((this.settings && this.settings.asc_getCodePage()) ? this.settings.asc_getCodePage() : 0);
+            if (this.detectedDelimiter || this.type === Common.Utils.importTextType.TXT) {
+                delimiter = this.cmbDelimiter ? this.cmbDelimiter.getValue() : null;
+                delimiterChar = delimiter == -1 ? this.inputDelimiter.getValue() : null;
+            } else {
+                var res = this.api.asc_getCSVDelimiter(text);
+                text = res.text;
+                delimiter = res.delimiter || -1;
+                delimiterChar = delimiter===-1 ? res.delimiterChar || '' : '';
+                this.cmbDelimiter.setValue(delimiter);
+                this.inputDelimiter.setVisible(delimiter===-1);
+                this.inputDelimiter.setValue(delimiterChar);
+                this.detectedDelimiter = true;
+            }
             var options = new Asc.asc_CTextOptions(encoding, delimiter, delimiterChar);
             if (this.separatorOptions) {
                 options.asc_setNumberDecimalSeparator(this.separatorOptions.decimal);
                 options.asc_setNumberGroupSeparator(this.separatorOptions.thousands);
                 options.asc_setTextQualifier(this.separatorOptions.qualifier);
             }
-
-            switch (this.type) {
-                case Common.Utils.importTextType.CSV:
-                case Common.Utils.importTextType.TXT:
-                case Common.Utils.importTextType.Data:
-                    this.api.asc_decodeBuffer(this.preview, options, _.bind(this.previewCallback, this));
-                    break;
-                case Common.Utils.importTextType.Paste:
-                case Common.Utils.importTextType.Columns:
-                    this.api.asc_TextImport(options, _.bind(this.previewCallback, this), this.type == Common.Utils.importTextType.Paste);
-                    break;
-            }
+            this.previewCallback(this.api.asc_parseText(text, options));
         },
 
         previewCallback: function(data) {
@@ -539,10 +566,17 @@ define([
                 setTimeout(function(){me.inputDelimiter.focus();}, 10);
             if (this.preview)
                 this.updatePreview();
+            this._isDelimChanged = true;
+        },
+
+        onInputCharChanging: function(){
+            this.preview && this.updatePreview();
+            this._isDelimCharChanged = true;
         },
 
         onCmbEncodingSelect: function(combo, record){
-            this.updatePreview();
+            this.preview && this.updatePreview();
+            this._isEncodingChanged = true;
         },
 
         onAdvancedClick: function() {
@@ -596,9 +630,9 @@ define([
                     },1);
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(txtRange.getValue()) && (txtRange.checkValidate()==true)) ? txtRange.getValue() : (me.dataDestValid),

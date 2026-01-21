@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,26 +32,21 @@
 /**
  *  ParagraphSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 2/21/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 2/21/14
  *
  */
 
-define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.template',
+define([
+    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.template',
+    'common/main/lib/component/TableStyler',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/ThemeColorPalette',
-    'common/main/lib/component/ColorButton',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/TableStyler'
 ], function (contentTemplate) {
     'use strict';
 
     DE.Views.ParagraphSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 370,
-            contentHeight: 330,
+            contentHeight: 340,
             toggleGroup: 'paragraph-adv-settings-group',
             storageName: 'de-para-settings-adv-category'
         },
@@ -134,11 +129,11 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             });
 
             this._arrTabLeader = [
-                { value: Asc.c_oAscTabLeader.None,      displayValue: this.textNone },
-                { value: Asc.c_oAscTabLeader.Dot,       displayValue: '....................' },
-                { value: Asc.c_oAscTabLeader.Hyphen,    displayValue: '-----------------' },
-                { value: Asc.c_oAscTabLeader.MiddleDot, displayValue: '·················' },
-                { value: Asc.c_oAscTabLeader.Underscore,displayValue: '__________' }
+                { value: Asc.c_oAscTabLeader.None,      cls: '', displayValue: this.textNone },
+                { value: Asc.c_oAscTabLeader.Dot,       cls: 'font-sans-serif', displayValue: '....................' },
+                { value: Asc.c_oAscTabLeader.Hyphen,    cls: 'font-sans-serif', displayValue: '-----------------' },
+                { value: Asc.c_oAscTabLeader.MiddleDot, cls: 'font-sans-serif', displayValue: '·················' },
+                { value: Asc.c_oAscTabLeader.Underscore,cls: 'font-sans-serif', displayValue: '__________' }
             ];
             this._arrKeyTabLeader = [];
             this._arrTabLeader.forEach(function(item) {
@@ -190,6 +185,9 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 }
             }, this));
             this.spinners.push(this.numIndentsRight);
+
+            this.lblIndentsLeft = $('#paragraphadv-lbl-indent-left');
+            this.lblIndentsRight = $('#paragraphadv-lbl-indent-right');
 
             this.numSpacingBefore = new Common.UI.MetricSpinner({
                 el: $('#paragraphadv-spin-spacing-before'),
@@ -262,6 +260,11 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 el: $('#paragraphadv-checkbox-add-interval'),
                 labelText: this.strSomeParagraphSpace
             });
+            this.chAddInterval.on('change', _.bind(function(field, newValue, oldValue, eOpts){
+                if (this._changedProps) {
+                    this._changedProps.asc_putContextualSpacing(field.getValue()=='checked');
+                }
+            }, this));
 
             this.cmbSpecial = new Common.UI.ComboBox({
                 el: $('#paragraphadv-spin-special'),
@@ -298,6 +301,11 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 takeFocusOnClose: true
             });
             this.cmbTextAlignment.setValue('');
+            this.cmbTextAlignment.on('selected', _.bind(function(combo, record) {
+                if (this._changedProps) {
+                    this._changedProps.asc_putJc(record.value>-1 ? record.value: null);
+                }
+            }, this));
 
             this.cmbOutlinelevel = new Common.UI.ComboBox({
                 el: $('#paragraphadv-spin-outline-level'),
@@ -310,6 +318,22 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             });
             this.cmbOutlinelevel.setValue(-1);
             this.cmbOutlinelevel.on('selected', _.bind(this.onOutlinelevelSelect, this));
+
+            this.rbDirLtr = new Common.UI.RadioBox({
+                el: $('#paragraphadv-dir-ltr'),
+                name        : 'text-dir',
+                labelText   : this.textDirLtr,
+                value: false
+            });
+            this.rbDirLtr.on('change', _.bind(this.onTextDirChange, this));
+
+            this.rbDirRtl = new Common.UI.RadioBox({
+                el: $('#paragraphadv-dir-rtl'),
+                name        : 'text-dir',
+                labelText   : this.textDirRtl,
+                value: true
+            });
+            this.rbDirRtl.on('change', _.bind(this.onTextDirChange, this));
 
             // Line & Page Breaks
 
@@ -606,13 +630,21 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
             });
             this.cmbAlign.setValue(Asc.c_oAscTabType.Left);
 
-            this.cmbLeader = new Common.UI.ComboBox({
+            this.cmbLeader = new Common.UI.ComboBoxCustom({
                 el          : $('#paraadv-cmb-leader'),
                 style       : 'width: 108px;',
                 menuStyle   : 'min-width: 108px;',
                 editable    : false,
                 cls         : 'input-group-nr',
                 data        : this._arrTabLeader,
+                itemsTemplate: _.template([
+                    '<% _.each(items, function(item) { %>',
+                    '<li id="<%= item.id %>" data-value="<%- item.value %>" class="<%= item.cls %>"><a tabindex="-1" type="menuitem"><%= scope.getDisplayValue(item) %></a></li>',
+                    '<% }); %>',
+                ].join('')),
+                updateFormControl: function(record) {
+                    this._input && this._input.toggleClass('font-sans-serif', record.get('value')!==Asc.c_oAscTabLeader.None);
+                },
                 takeFocusOnClose: true
             });
             this.cmbLeader.setValue(Asc.c_oAscTabLeader.None);
@@ -713,7 +745,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
         getFocusedComponents: function() {
             return this.btnsCategory.concat([
                 this.cmbTextAlignment, this.cmbOutlinelevel, this.numIndentsLeft, this.numIndentsRight, this.cmbSpecial, this.numSpecialBy,
-                this.numSpacingBefore, this.numSpacingAfter, this.cmbLineRule, this.numLineHeight, this.chAddInterval, // 0 tab
+                this.numSpacingBefore, this.numSpacingAfter, this.cmbLineRule, this.numLineHeight, this.chAddInterval, this.rbDirLtr, this.rbDirRtl, // 0 tab
                 this.chBreakBefore, this.chKeepLines, this.chOrphan, this.chKeepNext, this.chLineNumbers, // 1 tab
                 this.cmbBorderSize, this.btnBorderColor]).concat(this._btnsBorderPosition).concat([this.btnBackColor,  // 2 tab
                 this.chStrike, this.chSubscript, this.chDoubleStrike, this.chSmallCaps, this.chSuperscript, this.chAllCaps, this.numSpacing, this.numPosition, // 3 tab
@@ -824,12 +856,6 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 this._changedProps.asc_putSpacing(this.Spacing);
             }
 
-            var spaceBetweenPrg = this.chAddInterval.getValue();
-            this._changedProps.asc_putContextualSpacing(spaceBetweenPrg == 'checked');
-
-            var horizontalAlign = this.cmbTextAlignment.getValue();
-            this._changedProps.asc_putJc((horizontalAlign !== undefined && horizontalAlign !== null) ? horizontalAlign : c_paragraphTextAlignment.LEFT);
-
             return { paragraphProps: this._changedProps, borderProps: {borderSize: this.BorderSize, borderColor: this.btnBorderColor.isAutoColor() ? 'auto' : this.btnBorderColor.color} };
         },
 
@@ -868,7 +894,15 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                 this.cmbSpecial.setValue(this.CurSpecial);
                 this.numSpecialBy.setValue(this.FirstLine!== null ? Math.abs(Common.Utils.Metric.fnRecalcFromMM(this.FirstLine)) : '', true);
 
-                this.cmbTextAlignment.setValue((props.get_Jc() !== undefined && props.get_Jc() !== null) ? props.get_Jc() : c_paragraphTextAlignment.LEFT, true);
+                value = props.asc_getRtlDirection();
+                if (value !== undefined) {
+                    this.rbDirRtl.setValue(value, true);
+                    this.rbDirLtr.setValue(!value, true);
+                }
+                this.lblIndentsLeft.text(value ? this.strIndentsSpacingBefore : this.strIndentsLeftText);
+                this.lblIndentsRight.text(value ? this.strIndentsSpacingAfter : this.strIndentsRightText);
+
+                this.cmbTextAlignment.setValue((props.get_Jc() !== undefined && props.get_Jc() !== null) ? props.get_Jc() : '');
 
                 this.chKeepLines.setValue((props.get_KeepLines() !== null && props.get_KeepLines() !== undefined) ? props.get_KeepLines() : 'indeterminate', true);
                 this.chBreakBefore.setValue((props.get_PageBreakBefore() !== null && props.get_PageBreakBefore() !== undefined) ? props.get_PageBreakBefore() : 'indeterminate', true);
@@ -912,19 +946,7 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
                     this.paragraphShade = 'transparent';
                 }
                 this.btnBackColor.setColor(this.paragraphShade);
-                if ( typeof(this.paragraphShade) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == this.paragraphShade.effectValue ) {
-                            this.colorsBack.select(this.paragraphShade,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colorsBack.clearSelection();
-                } else
-                    this.colorsBack.select(this.paragraphShade,true);
-
+                Common.Utils.ThemeColor.selectPickerColorByEffect(this.paragraphShade, this.colorsBack);
                 this._UpdateBorders();
 
                 // Font
@@ -1483,6 +1505,14 @@ define([    'text!documenteditor/main/app/template/ParagraphSettingsAdvanced.tem
         onLigaturesSelect: function(combo, record) {
             if (this._changedProps) {
                 this._changedProps.put_Ligatures(record.value);
+            }
+        },
+
+        onTextDirChange: function(field, newValue, eOpts) {
+            if (newValue && this._changedProps) {
+                this._changedProps.asc_putRtlDirection(field.options.value);
+                this.lblIndentsLeft.text(field.options.value ? this.strIndentsSpacingBefore : this.strIndentsLeftText);
+                this.lblIndentsRight.text(field.options.value ? this.strIndentsSpacingAfter : this.strIndentsRightText);
             }
         },
 

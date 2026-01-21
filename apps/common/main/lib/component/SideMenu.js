@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  SideMenu.js
  *
- *  Created by Julia Svinareva on 25/10/2023.
- *  Copyright (c) 2023 Ascensio System SIA. All rights reserved.
+ *  Created on 25/10/2023.
  *
  */
 
@@ -63,6 +62,7 @@ define([
                     })
                 });
                 this.btnMore.menu.on('item:click', _.bind(this.onMenuMore, this));
+                this.btnMore.menu.on('item:custom-click', _.bind(this.onMenuMore, this));
                 this.btnMore.menu.on('show:before', _.bind(this.onShowBeforeMoreMenu, this));
                 this.btnMore.hide();
 
@@ -126,7 +126,7 @@ define([
                                     template: _.template([
                                         '<a id="<%= id %>" class="menu-item" tabindex="-1" type="menuitem">',
                                         '<img class="menu-item-icon" src="<%= options.iconImg %>">',
-                                        '<%= caption %>',
+                                        '<%- caption %>',
                                         '</a>'
                                     ].join('')),
                                     value: index,
@@ -134,6 +134,17 @@ define([
                                     checkmark: false,
                                     checkable: true
                                 })
+                            } else if (btn.options.iconsSet) {
+                                arrMore.push(new Common.UI.MenuItemCustom({
+                                    caption: btn.hint,
+                                    iconsSet: btn.options.iconsSet,
+                                    baseUrl: btn.options.baseUrl,
+                                    value: index,
+                                    disabled: btn.isDisabled(),
+                                    toggleGroup: 'sideMenuItems',
+                                    checkmark: false,
+                                    checkable: true
+                                }));
                             } else {
                                 arrMore.push({
                                     caption: btn.hint,
@@ -165,6 +176,13 @@ define([
                 }
             },
 
+            clearMoreButton: function() {
+                this.buttons && this.buttons.forEach(function (btn) {
+                    btn.cmpEl.show();
+                });
+                this.btnMore.hide();
+            },
+
             onMenuMore: function (menu, item) {
                 var btn = this.buttons[item.value];
                 if (btn.cmpEl.prop('id') !== 'left-btn-support')
@@ -191,7 +209,7 @@ define([
             setDisabledMoreMenuItem: function (btn, disabled) {
                 if (this.btnMore && !btn.cmpEl.is(':visible')) {
                     var index =_.indexOf(this.buttons, btn),
-                        item = _.findWhere(this.btnMore.menu.items, {value: index})
+                        item = _.findWhere(this.btnMore.menu.items, {value: index});
                     item && item.setDisabled(disabled);
                 }
             },
@@ -212,6 +230,10 @@ define([
                         me.setDisabledMoreMenuItem(btn, disabled);
                     }
                 });
+            },
+
+            isButtonInMoreMenu: function (btn) {
+                return _.indexOf(this.buttons, btn)>-1;
             },
 
             getPluginButton: function (guid) {
@@ -241,7 +263,7 @@ define([
                     index = arr[1];
                 btn.cmpEl.parent().remove();
                 this.buttons.splice(index, 1);
-                this.close();
+                this.close && this.close();
 
                 this.setMoreButton();
             },
@@ -257,7 +279,7 @@ define([
                 return pressed;
             },
 
-            togglePluginButtons: function (toggle) {
+            toggleActivePluginButton: function (toggle) {
                 for (var i=0; i<this.buttons.length; i++) {
                     if (this.buttons[i].options.type === 'plugin' && this.buttons[i].pressed) {
                         this.buttons[i].toggle(toggle, true);
@@ -273,13 +295,15 @@ define([
                         index = arr[1],
                         menuItem = _.findWhere(me.btnMore.menu.items, {value: index}),
                         src = item.baseUrl + item.parsedIcons['normal'];
-                    btn.options.iconImg = src;
-                    btn.cmpEl.find("img").attr("src", src);
-                    if (menuItem) {
+                    if (!btn.options.iconsSet) {// updated automatically if has iconsSet
+                        btn.options.iconImg = src;
+                        btn.cmpEl.find("img").attr("src", src);
+                    }
+                    if (menuItem && !menuItem.options.iconsSet) {// updated automatically if has iconsSet
                         menuItem.cmpEl.find("img").attr("src", src);
                     }
                 });
-            },
+            }
         }
     }()));
 });

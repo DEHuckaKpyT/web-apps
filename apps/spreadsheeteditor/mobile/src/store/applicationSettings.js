@@ -43,7 +43,8 @@ export class storeApplicationSettings {
     isRefStyle = false;
     isComments = true;
     isResolvedComments = true; 
-    formulaLangs = ['en', 'be', 'bg', 'ca', 'zh', 'cs', 'da', 'nl', 'fi', 'fr', 'de', 'el', 'hu', 'id', 'it', 'ja', 'ko', 'lv', 'lo', 'nb', 'pl', 'pt-br', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'es', 'tr', 'uk', 'vi'];
+    formulaLangs = ['en', 'be', 'bg', 'ca', 'zh', 'zh-tw', 'cs', 'da', 'nl', 'fi', 'fr', 'de', 'el', 'hu', 'id', 'it', 'ja', 'ko', 'lv', 'lo', 'nb', 'pl', 'pt-br', 'pt', 'ro', 'ru', 'sr', 'sr-cyrl', 'sk', 'sl', 'sv', 'es', 'tr', 'uk', 'vi'];
+
     formulaLangsExamples = {
         'txtExampleEn': 'SUM; MIN; MAX; COUNT',
         'txtExampleDe': 'SUMME; MIN; MAX; ANZAHL',
@@ -63,7 +64,9 @@ export class storeApplicationSettings {
         'txtExamplePt': 'SOMA; MÍNIMO; MÁXIMO; CONTAR',
         'txtExamplePtbr': 'SOMA; MÍNIMO; MÁXIMO; CONT.NÚM',
         'txtExampleSv': 'SUMMA; MIN; MAX; ANTAL',
-        'txtExampleTr': 'TOPLA; MİN; MAK; BAĞ_DEĞ_SAY'
+        'txtExampleTr': 'TOPLA; MİN; MAK; BAĞ_DEĞ_SAY',
+        'txtExampleSr': 'SUMA; MIN; MAKS; BROJANJE',
+        'txtExampleSrcyrl': 'СУМА; МИН; МАКС; БРОЈАЊЕ'
     }
     formulaLangsColection = [];
 
@@ -77,9 +80,9 @@ export class storeApplicationSettings {
 
     getRegDataCodes() {
         const regDataCode = [
-            { value: 0x042C }, { value: 0x0402 }, { value: 0x0405 }, { value: 0x0406 }, { value: 0x0C07 }, { value: 0x0407 },  {value: 0x0807}, { value: 0x0408 }, { value: 0x0C09 }, { value: 0x3809 }, { value: 0x0809 }, { value: 0x0409 }, { value: 0x0C0A }, { value: 0x080A },
+            { value: 0x0401 }, { value: 0x042C }, { value: 0x0402 }, { value: 0x0405 }, { value: 0x0406 }, { value: 0x0C07 }, { value: 0x0407 },  {value: 0x0807}, { value: 0x0408 }, { value: 0x0C09 }, { value: 0x3809 }, { value: 0x0809 }, { value: 0x0409 }, { value: 0x0C0A }, { value: 0x080A },
             { value: 0x040B }, { value: 0x040C }, { value: 0x100C }, { value: 0x0421 }, { value: 0x0410 }, { value: 0x0810 }, { value: 0x0411 }, { value: 0x0412 }, { value: 0x0426 }, { value: 0x040E }, { value: 0x0413 }, { value: 0x0415 }, { value: 0x0416 },
-            { value: 0x0816 }, { value: 0x0419 }, { value: 0x041B }, { value: 0x0424 }, { value: 0x081D }, { value: 0x041D }, { value: 0x041F }, { value: 0x0422 }, { value: 0x042A }, { value: 0x0804 }, { value: 0x0404 }
+            { value: 0x0816 }, { value: 0x0419 }, { value: 0x041B }, { value: 0x0424 }, { value: 0x281A }, { value: 0x241A }, { value: 0x081D }, { value: 0x041D }, { value: 0x041F }, { value: 0x0422 }, { value: 0x042A }, { value: 0x0804 }, { value: 0x0404 }
         ];
 
         return regDataCode;

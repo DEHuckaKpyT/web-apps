@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  HyperlinkSettingsDialog.js
  *
- *  Created by Alexander Yuzhin on 4/9/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/9/14
  *
  */
 
@@ -41,13 +40,7 @@
 if (Common === undefined)
     var Common = {};
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/Window',
-    'common/main/lib/component/TreeView'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     SSE.Views.HyperlinkSettingsDialog = Common.UI.Window.extend(_.extend({
         options: {
@@ -64,8 +57,8 @@ define([
             }, options || {});
 
             this.template = [
-                '<div class="box" style="height: 313px;">',
-                    '<div class="input-row margin-bottom-big">',
+                '<div class="box" style="height: 330px;">',
+                    '<div class="margin-bottom-big">',
                         '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-external">', this.textExternalLink,'</button>',
                         '<button type="button" class="btn btn-text-default auto" id="id-dlg-hyperlink-internal">', this.textInternalLink,'</button>',
                     '</div>',
@@ -81,8 +74,8 @@ define([
                             '<div class="get-link float-right">',
                                 '<label class="link dropdown-toggle float-right" data-toggle="dropdown" id="id-dlg-hyperlink-get-link">' + this.textGetLink + '</label>',
                                 '<div id="id-clip-copy-box" class="dropdown-menu">',
-                                    '<div id="id-dlg-clip-copy"></div>',
-                                    '<button id="id-dlg-copy-btn" class="btn btn-text-default margin-left-5">' + this.textCopy + '</button>',
+                                    '<div id="id-dlg-clip-copy" class="display-inline-block-middle"></div>',
+                                    '<button id="id-dlg-copy-btn" class="btn btn-text-default margin-left-5 display-inline-block-middle">' + this.textCopy + '</button>',
                                 '</div>',
                             '</div>',
                         '</div>',
@@ -135,12 +128,17 @@ define([
             });
             me.btnInternal.on('click', _.bind(me.onLinkTypeClick, me, Asc.c_oAscHyperlinkType.RangeLink));
 
-            me.inputUrl = new Common.UI.InputField({
+            Common.UI.GroupedButtons([me.btnExternal, me.btnInternal]);
+
+            var config = {
                 el          : $('#id-dlg-hyperlink-url'),
                 allowBlank  : false,
                 blankError  : me.txtEmpty,
                 validateOnBlur: false,
                 style       : 'width: 100%;',
+                iconCls: 'toolbar__icon btn-browse',
+                placeHolder: me.appOptions.isDesktopApp ? me.txtUrlPlaceholder : '',
+                btnHint: me.textSelectFile,
                 validation  : function(value) {
                     var trimmed = $.trim(value);
                     if (me.api.asc_getFullHyperlinkLength(trimmed)>2083) return me.txtSizeLimit;
@@ -148,7 +146,8 @@ define([
                     me.urlType = me.api.asc_getUrlType(trimmed);
                     return (me.urlType!==AscCommon.c_oAscUrlType.Invalid) ? true : me.txtNotUrl;
                 }
-            });
+            };
+            me.inputUrl = me.appOptions.isDesktopApp ? new Common.UI.InputFieldBtn(config) : new Common.UI.InputField(config);
             me.inputUrl._input.on('input', function (e) {
                 me.isInputFirstChange_url && me.inputUrl.showError();
                 me.isInputFirstChange_url = false;
@@ -156,6 +155,7 @@ define([
                 me.isAutoUpdate && me.inputDisplay.setValue(val);
                 me.btnOk.setDisabled($.trim(val)=='');
             });
+            me.appOptions.isDesktopApp && me.inputUrl.on('button:click', _.bind(me.onSelectFile, me));
 
             me.inputRange = new Common.UI.InputFieldBtn({
                 el          : $('#id-dlg-hyperlink-range'),
@@ -559,14 +559,31 @@ define([
 
                 me.api.asc_showWorksheet(me.internalList.getSelectedRec().get('index')-1);
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(me.inputRange.getValue()) && (me.inputRange.checkValidate()==true)) ? me.inputRange.getValue() : me.dataRangeValid,
                     type    : Asc.c_oAscSelectionDialogType.Chart
                 });
+            }
+        },
+
+        onSelectFile: function() {
+            var me = this;
+            if (me.api) {
+                var callback = function(result) {
+                    if (result) {
+                        me.inputUrl.setValue(result);
+                        if (me.inputUrl.checkValidate() !== true)
+                            me.isInputFirstChange_url = true;
+                        me.isAutoUpdate && me.inputDisplay.setValue(result);
+                        me.btnOk.setDisabled($.trim(result)=='');
+                    }
+                };
+
+                me.api.asc_getFilePath(callback); // change sdk function
             }
         },
 
@@ -590,6 +607,8 @@ define([
         textGetLink: 'Get Link',
         textCopy: 'Copy',
         textSelectData: 'Select data',
-        txtSizeLimit: 'This field is limited to 2083 characters'
+        txtSizeLimit: 'This field is limited to 2083 characters',
+        txtUrlPlaceholder: 'Enter the web address or select a file',
+        textSelectFile: 'Select file'
     }, SSE.Views.HyperlinkSettingsDialog || {}))
 });

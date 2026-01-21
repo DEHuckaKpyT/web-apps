@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,17 +33,12 @@
 /**
  *  ChartDataDialog.js
  *
- *  Created by Julia Radzhabova on 06.07.2020
- *  Copyright (c) 2020 Ascensio System SIA. All rights reserved.
+ *  Created on 06.07.2020
  *
  */
 
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/ListView',
-    'common/main/lib/view/AdvancedSettingsWindow'
+    'common/main/lib/view/AdvancedSettingsWindow',
 ], function () { 'use strict';
 
     SSE.Views.ChartDataDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
@@ -57,7 +52,7 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                contentStyle: 'padding: 0 10px;',
+                contentStyle: 'padding: 5px 5px 0;',
                 contentTemplate: _.template([
                     '<div class="settings-panel active">',
                         '<div class="inner-content">',
@@ -236,7 +231,7 @@ define([
         close: function () {
             this.clearCategoryListTimer();
 
-            this.api.asc_onCloseChartFrame();
+            this.api.asc_onCloseFrameEditor();
             Common.Views.AdvancedSettingsWindow.prototype.close.apply(this, arguments);
         },
 
@@ -343,9 +338,9 @@ define([
                     me.show();
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : me.txtDataRange.getValue(),
@@ -359,7 +354,7 @@ define([
             var record = null, listView = this.seriesList;
 
             if (listView.disabled) return;
-            if (_.isUndefined(undefined)) data = e;
+            if (_.isUndefined(data)) data = e;
 
             if (data.keyCode==Common.UI.Keys.DELETE && !this.btnDelete.isDisabled()) {
                 // this.onDeleteSeries();
@@ -470,9 +465,9 @@ define([
             });
 
             me._isEditRanges = true;
-            var xy = me.$window.offset();
+            var xy = Common.Utils.getOffset(me.$window);
             me.hide();
-            win.show(xy.left + 160, xy.top + 125);
+            win.show(xy.left + (me.$window.outerWidth() - win.options.width)/2, xy.top + (me.$window.outerHeight() - 150)/2);
             win.setSettings({
                 api     : me.api,
                 props   : props,

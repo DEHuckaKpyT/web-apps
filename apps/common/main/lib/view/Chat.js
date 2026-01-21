@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *    View
  *
- *    Created by Maxim Kadushkin on 27 February 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 27 February 2014
  *
  */
 
@@ -98,7 +97,7 @@ define([
         events: {
         },
 
-        usersBoxHeight: 72,
+        usersBoxHeight: 117,
         messageBoxHeight: 70,
         addMessageBoxHeight: 110,
 
@@ -120,7 +119,7 @@ define([
 
         render: function(el) {
             el = el || this.el;
-            $(el).html(this.template({scope: this, maxMsgLength: Asc.c_oAscMaxCellOrCommentLength}));
+            $(el).html(this.template({scope: this, maxMsgLength: Asc.c_oAscMaxCellOrCommentLength, textChat: this.textChat, textEnterMessage: this.textEnterMessage }));
 
             this.panelBox       = $('#chat-box', this.el);
             this.panelUsers     = $('#chat-users', this.el);
@@ -141,6 +140,14 @@ define([
             });
             this.panelOptions.scroller = new Common.UI.Scroller({el: $('#chat-options')});
 
+            this.buttonClose = new Common.UI.Button({
+                parentEl: $('#chat-btn-close', this.$el),
+                cls: 'btn-toolbar',
+                iconCls: 'toolbar__icon btn-close',
+                hint: this.textClosePanel
+            });
+            this.buttonClose.on('click', _.bind(this.onClickClosePanel, this));
+
             $('#chat-msg-btn-add', this.el).on('click', _.bind(this._onBtnAddMessage, this));
             this.txtMessage.on('keydown', _.bind(this._onKeyDown, this));
 
@@ -159,20 +166,21 @@ define([
             this.setupAutoSizingTextBox();
         },
 
+        getFocusElement: function () {
+            return this.txtMessage;
+        },
+
         _onKeyDown: function(event) {
             if (event.keyCode == Common.UI.Keys.RETURN) {
                 if ((event.ctrlKey || event.metaKey) && !event.altKey) {
                     this._onBtnAddMessage(event);
                 }
-            } else
-            if (event.keyCode == Common.UI.Keys.ESC && !Common.UI.HintManager.isHintVisible()) {
-                this.hide();
             }
         },
 
         _onResetUsers: function(c, opts) {
             if (this.panelUsers) {
-                this.panelUsers.html(this.templateUserList({users: this.storeUsers.chain().filter(function(item){return item.get('online');}).groupBy(function(item) {return item.get('idOriginal');}).value(),
+                this.panelUsers.html(this.templateUserList({users: this.storeUsers.chain().filter(function(item){return item.get('online');}).groupBy(function(item) { return item.get('idOriginal'); }).value(),
                                                             usertpl: this.tplUser, scope: this}));
                 this.panelUsers.scroller.update({minScrollbarLength  : 25, alwaysVisibleY: true});
             }
@@ -188,7 +196,7 @@ define([
                     // scroll to end
 
                     this.panelMessages.scroller.update({minScrollbarLength  : 40, alwaysVisibleY: true});
-                    this.panelMessages.scroller.scrollTop(content.get(0).getBoundingClientRect().height);
+                    this.panelMessages.scroller.scrollTop(Common.Utils.getBoundingClientRect(content.get(0)).height);
                 }
             }
         },
@@ -224,7 +232,7 @@ define([
             var user    = this.storeUsers.findOriginalUser(m.get('userid')),
                 avatar = Common.UI.ExternalUsers.getImage(m.get('userid'));
             m.set({
-                usercolor   : user ? user.get('color') : null,
+                usercolor   : user ? user.get('color') : Common.UI.ExternalUsers.getColor(m.get('userid')),
                 avatar      : avatar,
                 initials    : user ? user.get('initials') : Common.Utils.getUserInitials(m.get('parsedName')),
                 message     : this._pickLink(m.get('message'))
@@ -306,7 +314,7 @@ define([
                                 return me.usersBoxHeight;
                             }),
                             fmax: (function () {
-                                return me.panelBox.height() * 0.5 - me.messageBoxHeight;
+                                return Math.max(me.usersBoxHeight-20,me.panelBox.height() * 0.5 - me.messageBoxHeight);
                             })
                         }},
                     {el: items[1], rely: true, behaviour: 'splitter',
@@ -445,7 +453,14 @@ define([
             }
         },
 
-        textSend: "Send"
+        onClickClosePanel: function() {
+            Common.NotificationCenter.trigger('leftmenu:change', 'hide');
+        },
+
+        textSend: "Send",
+        textChat: "Chat",
+        textClosePanel: "Close chat",
+        textEnterMessage: "Enter your message here"
 
     }, Common.Views.Chat || {}))
 });

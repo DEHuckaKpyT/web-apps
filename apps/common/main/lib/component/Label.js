@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  Label.js
  *
- *  Created by Julia Radzhabova on 1/20/22
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 1/20/22
  *
  */
 
@@ -102,7 +101,7 @@ define([
             }
 
             if (this.disabled)
-                this.setDisabled(this.disabled);
+                this.setDisabled(!(this.disabled=false));
 
             if (this.options.scaling !== false && this.iconCls) {
                 this.$label.attr('ratio', 'ratio');
@@ -119,12 +118,11 @@ define([
         },
 
         setDisabled: function(disabled) {
-            if (!this.rendered)
-                return;
-
-            disabled = (disabled===true);
-            if (disabled !== this.disabled) {
-                this.$label.toggleClass('disabled', disabled);
+            if (this.rendered) {
+                disabled = (disabled===true);
+                if (disabled !== this.disabled) {
+                    this.$label.toggleClass('disabled', disabled);
+                }
             }
 
             this.disabled = disabled;
@@ -149,6 +147,10 @@ define([
                     }
                 }
             }
+        },
+
+        setCaption: function(text) {
+            this.$label.find('.caption').text(text);
         }
     });
 });

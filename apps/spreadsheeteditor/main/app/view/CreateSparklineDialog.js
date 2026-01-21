@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,11 @@
 /**
  *  CreateSparklineDialog.js
  *
- *  Created by Julia Radzhabova on 23.03.2021
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 23.03.2021
  *
  */
 define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/InputField',
-    'common/main/lib/view/AdvancedSettingsWindow'
+    'common/main/lib/view/AdvancedSettingsWindow',
 ], function () { 'use strict';
 
     SSE.Views.CreateSparklineDialog = Common.Views.AdvancedSettingsWindow.extend(_.extend({
@@ -54,7 +51,7 @@ define([
 
             _.extend(this.options, {
                 title: this.textTitle,
-                contentStyle: 'padding: 0 10px;',
+                contentStyle: 'padding: 5px 5px 0;',
                 contentTemplate: _.template([
                     '<div class="settings-panel active">',
                         '<div class="inner-content">',
@@ -112,7 +109,8 @@ define([
                 style       : 'width: 100%;',
                 btnHint     : this.textSelectData,
                 allowBlank  : true,
-                validateOnChange: true
+                validateOnChange: true,
+                validateOnBlur: false
             });
             this.txtSourceRange.on('button:click', _.bind(this.onSelectData, this, 'source'));
 
@@ -227,9 +225,9 @@ define([
                     },1);
                 });
 
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 me.hide();
-                win.show(xy.left + 160, xy.top + 125);
+                win.show(me.$window, xy);
                 win.setSettings({
                     api     : me.api,
                     range   : (!_.isEmpty(txtRange.getValue()) && (txtRange.checkValidate()==true)) ? txtRange.getValue() : ((type=='source') ? me.dataSourceValid : me.dataDestValid),

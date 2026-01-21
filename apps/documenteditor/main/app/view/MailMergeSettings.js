@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,7 +30,6 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 20.02.15
  */
 
@@ -40,10 +39,7 @@ define([
     'underscore',
     'backbone',
     'common/main/lib/component/Button',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/view/SaveAsDlg',
-    'common/main/lib/view/SelectFileDlg',
-    'documenteditor/main/app/view/MailMergeEmailDlg'
+    'common/main/lib/component/CheckBox'
 ], function (menuTemplate, $, _, Backbone) {
     'use strict';
 
@@ -136,7 +132,7 @@ define([
                 el          : $('#mmerge-field-num', me.$el),
                 allowBlank  : true,
                 validateOnChange: false,
-                style       : 'width: 80px; vertical-align: middle;',
+                style       : 'vertical-align: middle;',
                 maskExp     : /[0-9]/,
                 value       : 1,
                 validation  : function(value) {
@@ -196,7 +192,7 @@ define([
             this.btnFirst = new Common.UI.Button({
                 parentEl: $('#mmerge-button-first', me.$el),
                 cls: 'btn-toolbar',
-                iconCls: 'toolbar__icon ' + (!Common.UI.isRTL() ? 'btn-firstitem' : 'btn-lastitem'),
+                iconCls: 'toolbar__icon btn-firstitem icon-rtl',
                 disabled: true,
                 value: 0,
                 hint: this.txtFirst,
@@ -210,7 +206,7 @@ define([
             this.btnPrev = new Common.UI.Button({
                 parentEl: $('#mmerge-button-prev', me.$el),
                 cls: 'btn-toolbar',
-                iconCls: 'toolbar__icon ' + (!Common.UI.isRTL() ? 'btn-previtem' : 'btn-nextitem'),
+                iconCls: 'toolbar__icon btn-previtem icon-rtl',
                 disabled: true,
                 value: 1,
                 hint: this.txtPrev,
@@ -224,7 +220,7 @@ define([
             this.btnNext = new Common.UI.Button({
                 parentEl: $('#mmerge-button-next', me.$el),
                 cls: 'btn-toolbar',
-                iconCls: 'toolbar__icon ' + (!Common.UI.isRTL() ? 'btn-nextitem' : 'btn-previtem'),
+                iconCls: 'toolbar__icon btn-nextitem icon-rtl',
                 value: 2,
                 hint: this.txtNext,
                 lock: [_set.noRecipients, _set.lostConnect],
@@ -237,7 +233,7 @@ define([
             this.btnLast = new Common.UI.Button({
                 parentEl: $('#mmerge-button-last', me.$el),
                 cls: 'btn-toolbar',
-                iconCls: 'toolbar__icon ' + (!Common.UI.isRTL() ? 'btn-lastitem' : 'btn-firstitem'),
+                iconCls: 'toolbar__icon btn-lastitem icon-rtl',
                 value: 3,
                 hint: this.txtLast,
                 lock: [_set.noRecipients, _set.lostConnect],
@@ -479,6 +475,7 @@ define([
         },
 
         onEditData: function() {
+            if (!Common.Controllers.LaunchController.isScriptLoaded()) return;
             var mergeEditor = DE.getController('Common.Controllers.ExternalMergeEditor').getView('Common.Views.ExternalMergeEditor');
             if (mergeEditor) {
                 mergeEditor.show();
@@ -637,7 +634,7 @@ define([
                     width: 500,
                     closable: false,
                     title: this.notcriticalErrorTitle,
-                    msg: opts.data.error,
+                    msg: Common.Utils.String.htmlEncode(opts.data.error),
                     iconCls: 'warn',
                     buttons: _.isEmpty(opts.data.createEmailAccountUrl) ? ['ok'] : [{value: 'custom', caption: this.textGoToMail}, 'cancel'],
                     primary: _.isEmpty(opts.data.createEmailAccountUrl) ? ['ok'] : 'custom',
@@ -839,6 +836,7 @@ define([
                 viewMode: disable,
                 reviewMode: false,
                 fillFormMode: false,
+                viewDocMode: false,
                 allowMerge: true,
                 allowSignature: false,
                 allowProtect: false,
@@ -854,7 +852,9 @@ define([
                 documentHolder: {clear: false, disable: true},
                 toolbar: true,
                 plugins: false,
-                protect: false
+                protect: false,
+                header: {docmode: true, search: false, startfill: false},
+                shortcuts: false
             }, 'mailmerge');
 
             this.lockControls(DE.enumLockMM.preview, disable, {array: [this.btnInsField, this.btnEditData]});

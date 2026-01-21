@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,14 +33,12 @@
  *
  *  NamedRangePasteDlg.js
  *
- *  Created by Julia.Radzhabova on 05.06.15
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 05.06.15
  *
  */
 
 define([
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ListView'
 ], function () {
     'use strict';
 
@@ -58,7 +56,7 @@ define([
 
             _.extend(this.options, {
                 title: this.txtTitle,
-                contentStyle: 'padding: 0;',
+                contentStyle: 'padding: 5px 0 0;',
                 contentTemplate: _.template([
                     '<div class="settings-panel active">',
                         '<div class="inner-content">',

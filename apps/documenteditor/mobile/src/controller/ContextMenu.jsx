@@ -170,7 +170,7 @@ class ContextMenu extends ContextMenuController {
                       <span class="right-text">${_t.textDoNotShowAgain}</span>
                       </div>`,
             buttons: [{
-                text: 'OK',
+                text: _t.textOk,
                 onClick: () => {
                     const dontShow = $$('input[name="checkbox-show"]').prop('checked');
                     if (dontShow) LocalStorage.setItem("de-hide-copy-cut-paste-warning", 1);
@@ -199,7 +199,7 @@ class ContextMenu extends ContextMenuController {
                     text: _t.menuCancel
                 },
                 {
-                    text: 'OK',
+                    text: _t.textOk,
                     bold: true,
                     onClick: function () {
                         const size = picker.value;
@@ -246,18 +246,18 @@ class ContextMenu extends ContextMenuController {
 
                 f7.dialog.create({
                     title: t('Settings', {returnObjects: true}).notcriticalErrorTitle,
-                    text  : _t.txtWarnUrl,
-                    buttons: [{
+                    text  : _t.txtWarnUrl.replaceAll('{0}', url),
+                    buttons: [
+                        { text: _t.menuCancel, bold: true },
+                        {
                         text: _t.textOk,
-                        bold: true,
                         onClick: () => {
                             const newDocumentPage = window.open(url, '_blank');
                             if (newDocumentPage) {
                                 newDocumentPage.focus();
                             }
                         }
-                    },
-                    { text: _t.menuCancel }]
+                    }]
                 }).open();
             }
         }

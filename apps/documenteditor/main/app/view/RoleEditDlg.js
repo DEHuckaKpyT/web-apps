@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,15 +32,11 @@
 /**
  *  RoleEditDlg.js
  *
- *  Created by Julia Radzhabova on 13/04/22
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 13/04/22
  *
  */
 
-define([
-    'common/main/lib/component/Window',
-    'common/main/lib/component/InputField'
-], function () { 'use strict';
+define([], function () { 'use strict';
 
     DE.Views.RoleEditDlg = Common.UI.Window.extend(_.extend({
         options: {
@@ -55,14 +51,14 @@ define([
             this.template = [
                 '<div class="box">',
                     '<table cols="2" style="width: 100%;">',
-                        '<tr>',
+                        '<tr style="vertical-align: bottom;">',
                             '<td class="padding-right-10" style="width: 50px;">',
                                 '<label></label>',
                                 '<div id="id-dlg-role-color" style="margin-bottom: 10px;"></div>',
                             '</td>',
                             '<td>',
                                 '<label>' + this.textName + '</label>',
-                                '<div id="id-dlg-role-name" class="input-row" style="margin-bottom: 10px; "></div>',
+                                '<div id="id-dlg-role-name" style="margin-bottom: 10px; "></div>',
                             '</td>',
                         '</tr>',
                     '</table>',
@@ -104,7 +100,7 @@ define([
 
             this.btnColor = new Common.UI.ColorButton({
                 parentEl: $window.find('#id-dlg-role-color'),
-                additionalItems: [ this.mnuNoFormsColor = new Common.UI.MenuItem({
+                additionalItemsBefore: [ this.mnuNoFormsColor = new Common.UI.MenuItem({
                                       id: 'id-dlg-role-menu-no-highlight',
                                       caption: this.textNoHighlight,
                                       checkable: true,

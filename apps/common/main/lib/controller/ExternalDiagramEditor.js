@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *  ExternalDiagramEditor.js
  *
- *  Created by Julia Radzhabova on 4/08/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/08/14
  *
  */
 
@@ -43,15 +42,16 @@ if (Common === undefined)
 Common.Controllers = Common.Controllers || {};
 
 define([
-    'core',
-    'common/main/lib/view/ExternalDiagramEditor'
+    'core'
 ], function () { 'use strict';
     Common.Controllers.ExternalDiagramEditor = Backbone.Controller.extend(_.extend((function() {
         var appLang         = '{{DEFAULT_LANG}}',
             customization   = undefined,
             targetApp       = '',
+            canRequestOpen = false,
             externalEditor  = null,
-            isAppFirstOpened = true;
+            isAppFirstOpened = true,
+            isChartUpdating = false;
 
 
         var createExternalEditor = function() {
@@ -82,6 +82,7 @@ define([
                     'onAppReady'            : function() {},
                     'onDocumentStateChange' : function() {},
                     'onError'               : function() {},
+                    'onRequestOpen'         : canRequestOpen ? this.onRequestOpen : undefined,
                     'onInternalMessage'     : _.bind(this.onInternalMessage, this)
                 }
             });
@@ -89,7 +90,7 @@ define([
         };
 
         return {
-            views: ['Common.Views.ExternalDiagramEditor'],
+            views: [],
 
             initialize: function() {
                 this.addListeners({
@@ -101,11 +102,16 @@ define([
                         'resize': _.bind(function(o, state){
                             externalEditor && externalEditor.serviceCommand('window:resize', state == 'start');
                         },this),
+                        'animate:before': _.bind(function(){
+                            if(!this.isAppFirstOpened) {
+                                externalEditor && externalEditor.serviceCommand('reshow');
+                            }
+                        },this),
                         'show': _.bind(function(cmp){
                             var h = this.diagramEditorView.getHeight(),
                                 innerHeight = Common.Utils.innerHeight() - Common.Utils.InternalSettings.get('window-inactive-area-top');
-                            if (innerHeight<h) {
-                                this.diagramEditorView.setHeight(innerHeight);
+                            if (innerHeight<h || isAppFirstOpened) {
+                                this.diagramEditorView.setHeight(innerHeight<h ? innerHeight : h);
                             }
 
                             if (externalEditor) {
@@ -137,17 +143,20 @@ define([
                     }
                 });
 
-
+                Common.NotificationCenter.on('script:loaded', _.bind(this.onPostLoadComplete, this));
             },
 
-            onLaunch: function() {
-                this.diagramEditorView = this.createView('Common.Views.ExternalDiagramEditor', {handler: _.bind(this.handler, this)});
+            onLaunch: function() {},
+
+            onPostLoadComplete: function() {
+                this.views = this.getApplication().getClasseRefs('view', ['Common.Views.ExternalDiagramEditor']);
+                this.diagramEditorView = this.createView('Common.Views.ExternalDiagramEditor',{handler: this.handler.bind(this)});
             },
 
             setApi: function(api) {
                 this.api = api;
                 this.api.asc_registerCallback('asc_onCloseChartEditor', _.bind(this.onDiagrammEditingDisabled, this));
-                this.api.asc_registerCallback('asc_sendFromGeneralToFrameEditor', _.bind(this.onSendFromGeneralToFrameEditor, this));
+                this.api.asc_registerCallback('asc_sendFromGeneralToChartEditor', _.bind(this.onSendFromGeneralToFrameEditor, this));
                 return this;
             },
 
@@ -174,6 +183,7 @@ define([
                     if (data.config.lang) appLang = data.config.lang;
                     if (data.config.customization) customization = data.config.customization;
                     if (data.config.targetApp) targetApp = data.config.targetApp;
+                    canRequestOpen = !!data.config.canRequestOpen;
                 }
             },
 
@@ -210,20 +220,29 @@ define([
                         if (this.needDisableEditing) {
                             this.onDiagrammEditingDisabled();
                         }
+                        if (isChartUpdating) {
+                            Common.NotificationCenter.trigger('data:updatereferences', [isChartUpdating]);
+                            Common.NotificationCenter.trigger('action:end', Asc.c_oAscAsyncActionType.BlockInteraction, Common.UI.blockOperations.UpdateChart);
+                            isChartUpdating = false;
+                        }
                     } else
-                    if (eventData.type == 'chartDataReady') {
+                    if (eventData.type == 'frameEditorReady') {
                         if (this.needDisableEditing===undefined)
                             this.diagramEditorView.setControlsDisabled(false);
                     } else
                     if (eventData.type == "shortcut") {
-                        if (eventData.data.key == 'escape')
+                        if (eventData.data.key == 'escape') {
+                            if (externalEditor) {
+                                externalEditor.serviceCommand('getChartData');
+                            }
                             this.diagramEditorView.hide();
+                        }
                     } else
                     if (eventData.type == "canClose") {
                         if (eventData.data.answer === true) {
                             if (externalEditor) {
                                 externalEditor.serviceCommand('setAppDisabled',true);
-                                externalEditor.serviceCommand((eventData.data.mr == 'ok') ? 'getChartData' : 'clearChartData');
+                                externalEditor.serviceCommand('getChartData');
                             }
                             this.diagramEditorView.hide();
                         }
@@ -260,8 +279,27 @@ define([
                 }
             },
 
+            onRequestOpen: function(event) {
+                if (event && event.data)
+                    Common.Gateway.requestOpen(event.data);
+            },
+
             onSendFromGeneralToFrameEditor: function(data) {
                 externalEditor && externalEditor.serviceCommand('generalToFrameData', data);
+            },
+
+            updateChartSilent: function(externalRef) {
+                if (!this.api) return;
+
+                if (!externalEditor && !isChartUpdating) {
+                    isChartUpdating = externalRef;
+                    Common.NotificationCenter.trigger('action:start', Asc.c_oAscAsyncActionType.BlockInteraction, Common.UI.blockOperations.UpdateChart);
+                    this.diagramEditorView.options.animate = false;
+                    this.diagramEditorView.show(-10000, -10000);
+                    this.diagramEditorView.hide();
+                    this.diagramEditorView.options.animate = true;
+                } else
+                    Common.NotificationCenter.trigger('data:updatereferences', [externalRef]);
             },
 
             warningTitle: 'Warning',

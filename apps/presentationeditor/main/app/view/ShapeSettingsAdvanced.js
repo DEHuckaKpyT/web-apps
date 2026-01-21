@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,24 +32,20 @@
 /**
  *  ShapeSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 4/15/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 4/15/14
  *
  */
 
-define([    'text!presentationeditor/main/app/template/ShapeSettingsAdvanced.template',
+define([
+    'text!presentationeditor/main/app/template/ShapeSettingsAdvanced.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/ComboBoxDataView'
 ], function (contentTemplate) {
     'use strict';
 
     PE.Views.ShapeSettingsAdvanced = Common.Views.AdvancedSettingsWindow.extend(_.extend({
         options: {
             contentWidth: 300,
-            contentHeight: 257,
+            contentHeight: 270,
             toggleGroup: 'shape-adv-settings-group',
             sizeOriginal: {width: 0, height: 0},
             sizeMax: {width: 55.88, height: 55.88},
@@ -676,7 +672,7 @@ define([    'text!presentationeditor/main/app/template/ShapeSettingsAdvanced.tem
                 this.btnsCategory[4].setDisabled(null === margins);   // Margins
 
                 var shapetype = props.asc_getType();
-                this.btnsCategory[5].setDisabled(props.get_FromSmartArtInternal()
+                this.btnsCategory[5].setDisabled(props.get_FromSmartArtInternal() || props.get_FromSmartArt()
                     || shapetype=='line' || shapetype=='bentConnector2' || shapetype=='bentConnector3'
                     || shapetype=='bentConnector4' || shapetype=='bentConnector5' || shapetype=='curvedConnector2'
                     || shapetype=='curvedConnector3' || shapetype=='curvedConnector4' || shapetype=='curvedConnector5'

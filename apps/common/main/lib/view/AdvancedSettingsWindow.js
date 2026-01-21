@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,15 +32,11 @@
 /**
  *  AdvancedSettingsWindow.js
  *
- *  Created by Julia Radzhabova on 2/21/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 2/21/14
  *
  */
 
-define([
-    'common/main/lib/component/Window'
-], function () { 'use strict';
-
+define([], function () { 'use strict';
     Common.Views.AdvancedSettingsWindow = Common.UI.Window.extend(_.extend({
         initialize : function(options) {
             var _options = {};
@@ -109,10 +105,10 @@ define([
                 btn.on('click', _.bind(me.onCategoryClick, me, btn, index));
                 me.btnsCategory.push(btn);
             });
-            var cnt_panel = $window.find('.content-panel'),
-                menu_panel = $window.find('.menu-panel');
-            cnt_panel.width(this.contentWidth);
-            $window.width(((menu_panel.length>0) ? menu_panel.width() : 0) + cnt_panel.outerWidth() + 2);
+            let menu_panel = $window.find('.menu-panel');
+            this.content_panel = $window.find('.content-panel');
+            this.content_panel.width(this.contentWidth);
+            $window.width(((menu_panel.length>0) ? menu_panel.outerWidth() : 0) + this.content_panel.outerWidth() + 2);
 
             if (this.options.contentHeight) {
                 $window.find('.body > .box').css('height', this.options.contentHeight);
@@ -128,7 +124,7 @@ define([
                 this.btnsCategory[0].toggle(true, true);
 
             var onMainWindowResize = function(){
-                $window.width(((menu_panel.length>0) ? menu_panel.width() : 0) + cnt_panel.outerWidth() + 2);
+                $window.width(((menu_panel.length>0) ? menu_panel.outerWidth() : 0) + me.content_panel.outerWidth() + 2);
             };
             $(window).on('resize', onMainWindowResize);
             this.on('close', function() {
@@ -151,8 +147,14 @@ define([
                 hfHeight = parseInt($window.find('.header').css('height')) + parseInt($window.find('.footer').css('height')) + parseInt(bodyEl.css('padding-top')) + parseInt(bodyEl.css('padding-bottom')) +
                            parseInt($window.css('border-bottom-width')) + parseInt($window.css('border-top-width'));
 
+            (height===undefined) && (height = parseInt($window.find('.body > .box').css('height')));
             Common.UI.Window.prototype.setHeight.call(this, height + hfHeight);
             $window.find('.body > .box').css('height', height);
+        },
+
+        fixHeight: function(force) { // check height of the content
+            let diff = this.content_panels.filter('.active').height() - this.content_panel.height();
+            (force || diff>0) && this.setInnerHeight(parseInt(this.$window.find('.body > .box').css('height')) + diff);
         },
 
         onDlgBtnClick: function(event) {
@@ -165,6 +167,7 @@ define([
         onCategoryClick: function(btn, index) {
             this.content_panels.filter('.active').removeClass('active');
             $("#" + btn.options.contentTarget).addClass("active");
+            this.fixHeight();
         },
 
         getSettings: function() {
@@ -210,6 +213,13 @@ define([
             if (this.storageName)
                 Common.localStorage.setItem(this.storageName, this.getActiveCategory());
             Common.UI.Window.prototype.close.call(this, suppressevent);
+        },
+
+        onThemeChanged: function() {
+            if (!this.$window || !this.isVisible()) return;
+
+            Common.UI.Window.prototype.onThemeChanged.call(this);
+            this.fixHeight();
         },
 
         onAnimateAfter: function() {

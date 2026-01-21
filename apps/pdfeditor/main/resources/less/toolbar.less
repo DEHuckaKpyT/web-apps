@@ -1,25 +1,3 @@
-
-.toolbar {
-    &.masked {
-        button.disabled .icon:not(.no-mask) {
-            //background-position-x: 0px !important;
-        }
-        .group:not(.no-mask) {
-            opacity: 0.4;
-        }
-    }
-
-    .font-attr {
-        > .btn-slot:not(:last-child):not(.split) {
-            .margin-right-4();
-        }
-
-        > .btn-slot:not(:last-child).split {
-            .margin-right-2();
-        }
-    }
-}
-
 .toolbar-group-mask {
     position: absolute;
     top: 0;
@@ -31,6 +9,7 @@
 
 // menu zoom
 .dropdown-menu .menu-zoom {
+    line-height: @line-height-base-ie;
     line-height: @line-height-base;
     .title {
         padding: 5px 5px 5px 20px;
@@ -63,7 +42,7 @@
     background-color: #ee3525;
     border: none;
     border-radius: 0;
-    padding: 3px 10px;
+    padding: 0 10px;
     color: #ffffff;
     .font-size-normal();
     white-space: nowrap;
@@ -72,10 +51,40 @@
     text-overflow: ellipsis;
 }
 
-#slot-field-fontname {
-    width: 84px;
+#slot-field-fontsize {
+    width: 40px;
 }
 
-#slot-field-fontsize {
-    width: 45px;
+#slot-combo-insertshape .menu-insert-shape, .slot-combo-insertshape .menu-insert-shape {
+    width: 330px;
+}
+
+.item-markerlist {
+    width: 40px;
+    height: 40px;
+}
+
+.item-multilevellist {
+    width: 80px;
+    height: 80px;
+}
+
+#id-toolbar-menu-symbols {
+    display: inline-block;
+    width: 158px;
+    .padding-left(3px);
+    .item {
+        .margin-x(6px, 4px);
+    }
+    .item-symbol {
+        font-family: @font-family-base;
+        font-size: 14px;
+        display: block;
+        width: 20px;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        vertical-align: middle;
+
+    }
 }

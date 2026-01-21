@@ -87,7 +87,7 @@ class ContextMenu extends ContextMenuController {
                 title: t('ContextMenu.notcriticalErrorTitle'),
                 text: t('ContextMenu.errorInvalidLink'),
                 buttons:[
-                    {text: 'OK'}
+                    { text: t('ContextMenu.textOk') }
                 ] 
             }).open();
         }
@@ -166,7 +166,7 @@ class ContextMenu extends ContextMenuController {
                             text: t('ContextMenu.menuCancel')
                         },
                         {
-                            text: 'OK',
+                            text: t('ContextMenu.textOk'),
                             onClick: () => {
                                 api.asc_mergeCells(Asc.c_oAscMergeOptions.Merge);
                             }
@@ -193,7 +193,7 @@ class ContextMenu extends ContextMenuController {
                       <span class="right-text">${_t.textDoNotShowAgain}</span>
                       </div>`,
             buttons: [{
-                text: 'OK',
+                text: _t.textOk,
                 onClick: () => {
                     const dontShow = $$('input[name="checkbox-show"]').prop('checked');
                     if (dontShow) LocalStorage.setItem("sse-hide-copy-cut-paste-warning", 1);
@@ -215,18 +215,18 @@ class ContextMenu extends ContextMenuController {
                 const _t = t("ContextMenu", { returnObjects: true });
                 f7.dialog.create({
                     title: _t.notcriticalErrorTitle,
-                    text  : _t.txtWarnUrl,
-                    buttons: [{
+                    text  : _t.txtWarnUrl.replaceAll('{0}', url),
+                    buttons: [
+                        { text: _t.menuCancel, bold: true },
+                        {
                         text: _t.textOk,
-                        bold: true,
                         onClick: () => {
                             const newDocumentPage = window.open(url, '_blank');
                             if (newDocumentPage) {
                                 newDocumentPage.focus();
                             }
                         }
-                    },
-                    { text: _t.menuCancel }]
+                        }]
                 }).open();
             }
         }

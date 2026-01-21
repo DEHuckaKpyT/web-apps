@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,21 +32,14 @@
 /**
  *  TableSettingsAdvanced.js
  *
- *  Created by Julia Radzhabova on 2/27/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 2/27/14
  *
  */
 
-define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.template',
+define([
+    'text!documenteditor/main/app/template/TableSettingsAdvanced.template',
+    'common/main/lib/component/TableStyler',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/MetricSpinner',
-    'common/main/lib/component/CheckBox',
-    'common/main/lib/component/RadioBox',
-    'common/main/lib/component/ThemeColorPalette',
-    'common/main/lib/component/ColorButton',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/TableStyler'
 ], function (contentTemplate) {
     'use strict';
 
@@ -107,17 +100,17 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 Right  : 0.19,
                 Top    : null,
                 Bottom : null,
-                Flag   : 0  // 0(checked) - как в таблице, 1(indeterminate) - разные значения, не определено, 2 (unchecked) - собственные
+                Flag   : 0  // 0(checked) - as in table, 1(indeterminate) - different values, undefined, 2 (unchecked) - own values
             };
 
             this.TableBorders = {};
             this.CellBorders = {};
-            this.ChangedTableBorders = undefined; // undefined - не менялись, null - применялись пресеты, отправлять TableBorders, object - менялись отдельные границы, отправлять ChangedTableBorders
-            this.ChangedCellBorders = undefined; // undefined - не менялись, null - применялись пресеты, отправлять CellBorders, object - менялись отдельные границы, отправлять ChangedCellBorders
+            this.ChangedTableBorders = undefined; // undefined - not changed, null - apply presets, send TableBorders, object - apply some borders, send ChangedTableBorders
+            this.ChangedCellBorders = undefined; // undefined - not changed, null - apply presets, send CellBorders, object - apply some borders, send ChangedCellBorders
             this.BorderSize = {ptValue: 0, pxValue: 0};
 
-            this.TableColor = {Value: 1, Color: 'transparent'};  // value=1 - цвет определен - прозрачный или другой
-            this.CellColor = {Value: 1, Color: 'transparent'};  // value=1 - цвет определен - прозрачный или другой, value=0 - цвет не определен, рисуем прозрачным
+            this.TableColor = {Value: 1, Color: 'transparent'};  // value=1 - color is defined - transparent or other
+            this.CellColor = {Value: 1, Color: 'transparent'};  // value=1 - color is defined - transparent or other, value=0 - color is undefined, draw transparent
             this.IndeterminateColor = '#C8C8C8';
             this.IndeterminateSize = 4.5;
 
@@ -338,7 +331,7 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 labelText: this.textCheckMargins
             });
             this.chCellMargins.on('change', _.bind(function(field, newValue, oldValue, eOpts){
-                if ( oldValue=='checked' && this._originalProps && this._originalProps.get_CellMargins().get_Flag()==1 ) { // позволяем выставлять значение indeterminate только если исходные значения не совпадали
+                if ( oldValue=='checked' && this._originalProps && this._originalProps.get_CellMargins().get_Flag()==1 ) { // allow to set the indeterminate value only if the original values did not match
                     field.setValue('indeterminate', true);
                 }
                 this.fillMargins.call( this, field.getValue());
@@ -1241,7 +1234,7 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                 }
 
                 if ( flag===0 ) {
-                    // Если для всех выделенных ячеек пришло одинаковое значение Flag=0 (Use Default Margins), выставим в поля для Cell Margins значения DefaultMargins
+                    // If the same value is received for all selected cells Flag=0 (Use Default Margins), set DefaultMargins values in the fields for Cell Margins
                     if (this.CellMargins.Left=== null) this.CellMargins.Left = this.TableMargins.Left;
                     if (this.CellMargins.Top=== null) this.CellMargins.Top = this.TableMargins.Top;
                     if (this.CellMargins.Right=== null) this.CellMargins.Right = this.TableMargins.Right;
@@ -1412,32 +1405,10 @@ define([    'text!documenteditor/main/app/template/TableSettingsAdvanced.templat
                     this.CellColor = {Value: 0, Color: 'transparent'};
 
                 this.btnBackColor.setColor(this.CellColor.Color);
-                if ( typeof(this.CellColor.Color) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == this.CellColor.Color.effectValue ) {
-                            this.colorsBack.select(this.CellColor.Color,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colorsBack.clearSelection();
-                } else
-                    this.colorsBack.select(this.CellColor.Color,true);
+                Common.Utils.ThemeColor.selectPickerColorByEffect(this.CellColor.Color, this.colorsBack);
 
                 this.btnTableBackColor.setColor(this.TableColor.Color);
-                if ( typeof(this.TableColor.Color) == 'object' ) {
-                    var isselected = false;
-                    for (var i=0; i<10; i++) {
-                        if ( Common.Utils.ThemeColor.ThemeValues[i] == this.TableColor.Color.effectValue ) {
-                            this.colorsTableBack.select(this.TableColor.Color,true);
-                            isselected = true;
-                            break;
-                        }
-                    }
-                    if (!isselected) this.colorsTableBack.clearSelection();
-                } else
-                    this.colorsTableBack.select(this.TableColor.Color,true);
+                Common.Utils.ThemeColor.selectPickerColorByEffect(this.TableColor.Color, this.colorsTableBack);
 
                 this.ShowHideSpacing(this.chAllowSpacing.getValue()==='checked');
 

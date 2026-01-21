@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,8 +35,7 @@
  *  A base class for all menu items that require menu-related functionality such as click handling,
  *  sub-menus, icons, etc.
  *
- *  Created by Alexander Yuzhin on 1/27/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 1/27/14
  *
  */
 
@@ -107,20 +106,22 @@ define([
             dataHintDirection: '',
             dataHintOffset: '',
             dataHintTitle: '',
-            scaling: true
+            scaling: true,
+            header      : ''
         },
 
         tagName : 'li',
 
         template: _.template([
-            '<a id="<%= id %>" class="menu-item" style="<%= style %>" <% if(options.canFocused) { %> tabindex="-1" type="menuitem" <% }; if(!_.isUndefined(options.stopPropagation)) { %> data-stopPropagation="true" <% }; if(!_.isUndefined(options.dataHint)) { %> data-hint="<%= options.dataHint %>" <% }; if(!_.isUndefined(options.dataHintDirection)) { %> data-hint-direction="<%= options.dataHintDirection %>" <% }; if(!_.isUndefined(options.dataHintOffset)) { %> data-hint-offset="<%= options.dataHintOffset %>" <% }; if(options.dataHintTitle) { %> data-hint-title="<%= options.dataHintTitle %>" <% }; %> >',
+            '<% if (header) { %><span class="menu-item-header"><%- header %></span><% } %><% if (caption) { %><a id="<%= id %>" class="menu-item" <% if (_.isEmpty(iconCls)) { %> data-no-icon <% } %> style="<%= style %>" <% if(options.canFocused) { %> tabindex="-1" type="menuitem" <% }; if(!_.isUndefined(options.stopPropagation)) { %> data-stopPropagation="true" <% }; if(!_.isUndefined(options.dataHint)) { %> data-hint="<%= options.dataHint %>" <% }; if(!_.isUndefined(options.dataHintDirection)) { %> data-hint-direction="<%= options.dataHintDirection %>" <% }; if(!_.isUndefined(options.dataHintOffset)) { %> data-hint-offset="<%= options.dataHintOffset %>" <% }; if(options.dataHintTitle) { %> data-hint-title="<%= options.dataHintTitle %>" <% }; %> >',
                 '<% if (!_.isEmpty(iconCls)) { %>',
                     '<span class="menu-item-icon <%= iconCls %>"></span>',
                 '<% } else if (!_.isEmpty(iconImg)) { %>',
                     '<img src="<%= iconImg %>" class="menu-item-icon">',
                 '<% } %>',
                 '<%- caption %>',
-            '</a>'
+            '</a>',
+            '<% } %>'
         ].join('')),
 
         initialize : function(options) {
@@ -142,8 +143,10 @@ define([
             this.toggleGroup    = me.options.toggleGroup;
             this.template       = me.options.template || this.template;
             this.iconCls        = me.options.iconCls;
+            this.iconImg        = me.options.iconImg;
             this.hint           = me.options.hint;
             this.rendered       = false;
+            this.header         = me.options.header;
 
             if (this.menu !== null && !(this.menu instanceof Common.UI.Menu) && !(this.menu instanceof Common.UI.MenuSimple)) {
                 this.menu = new Common.UI.Menu(_.extend({}, me.options.menu));
@@ -171,9 +174,10 @@ define([
                         id      : me.id,
                         caption : me.caption,
                         iconCls : me.iconCls,
-                        iconImg : me.options.iconImg,
+                        iconImg : me.iconImg,
                         style   : me.style,
-                        options : me.options
+                        options : me.options,
+                        header  : me.header 
                     }));
 
                     if (me.menu) {
@@ -201,26 +205,7 @@ define([
                     }
 
                     if (me.options.hint) {
-                        el.attr('data-toggle', 'tooltip');
-                        el.tooltip({
-                            title       : me.options.hint,
-                            placement   : me.options.hintAnchor||function(tip, element) {
-                                var pos = this.getPosition(),
-                                    actualWidth = tip.offsetWidth,
-                                    actualHeight = tip.offsetHeight,
-                                    innerWidth = Common.Utils.innerWidth(),
-                                    innerHeight = Common.Utils.innerHeight();
-                                var top = pos.top,
-                                    left = pos.left + pos.width + 2;
-                                if (top + actualHeight > innerHeight) {
-                                    top = innerHeight - actualHeight - 2;
-                                }
-                                if (left + actualWidth > innerWidth) {
-                                    left = pos.left - actualWidth - 2;
-                                }
-                                $(tip).offset({top: top,left: left}).addClass('in');
-                            }
-                        });
+                        this.createHint();
                     }
 
                     if (this.cls)
@@ -254,6 +239,39 @@ define([
             me.trigger('render:after', me);
 
             return this;
+        },
+
+        createHint: function() {
+            if(!this.cmpEl) return;
+
+            this.cmpEl.attr('data-toggle', 'tooltip');
+            this.cmpEl.tooltip({
+                title       : this.options.hint,
+                placement   : this.options.hintAnchor||function(tip, element) {
+                    var pos = Common.Utils.getBoundingClientRect(element),
+                        actualWidth = tip.offsetWidth,
+                        actualHeight = tip.offsetHeight,
+                        innerWidth = Common.Utils.innerWidth(),
+                        innerHeight = Common.Utils.innerHeight();
+                    var top = pos.top,
+                        left = pos.left + pos.width + 2;
+                    if (top + actualHeight > innerHeight) {
+                        top = innerHeight - actualHeight - 2;
+                    }
+                    if (left + actualWidth > innerWidth) {
+                        left = pos.left - actualWidth - 2;
+                    }
+                    Common.Utils.setOffset($(tip),{top: top,left: left}).addClass('in');
+                }
+            });
+        },
+
+        updateHint: function(hint) {
+            this.options.hint = hint;
+            if (!this.rendered) return;
+
+            this.cmpEl.tooltip('destroy');
+            this.createHint();
         },
 
         setCaption: function(caption) {
@@ -321,7 +339,7 @@ define([
         },
 
         onItemMouseDown: function(e) {
-            Common.UI.HintManager && Common.UI.HintManager.clearHints();
+            Common.UI.HintManager && Common.UI.HintManager.isHintVisible() && Common.UI.HintManager.clearHints(false, true);
             if (e.which != 1) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -340,6 +358,7 @@ define([
 
             if (this.menu) {
                 if (e.target.id == this.id) {
+                    this._doHover(e);
                     return false;
                 }
 
@@ -447,7 +466,8 @@ define([
                         var iconCls = me.iconCls,
                             re_icon_name = /btn-[^\s]+/.exec(iconCls),
                             icon_name = re_icon_name ? re_icon_name[0] : "null",
-                            svg_icon = '<svg class="menu-item-icon"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name);
+                            rtlCls = (iconCls ? iconCls.indexOf('icon-rtl') : -1) > -1 ? 'icon-rtl' : '',
+                            svg_icon = '<svg class="menu-item-icon %rtlCls"><use class="zoom-int" href="#%iconname"></use></svg>'.replace('%iconname', icon_name).replace('%rtlCls', rtlCls);
 
                         firstChild.find('span.menu-item-icon').after(svg_icon);
                     }
@@ -461,4 +481,41 @@ define([
         options.caption = '--';
         return new Common.UI.MenuItem(options);
     };
+
+    Common.UI.MenuItemCustom = Common.UI.MenuItem.extend(_.extend({
+        initialize : function(options) {
+            Common.UI.MenuItem.prototype.initialize.call(this, options);
+
+            this.isCustomItem = true;
+            this.baseUrl = options.baseUrl || '';
+            this.iconsSet = Common.UI.iconsStr2IconsObj(options.iconsSet || ['']);
+            var icons = Common.UI.getSuitableIcons(this.iconsSet);
+            this.iconImg = this.baseUrl + icons['normal'];
+        },
+
+        render: function () {
+            Common.UI.MenuItem.prototype.render.call(this);
+
+            this.updateIcon();
+            Common.NotificationCenter.on('uitheme:changed', this.updateIcons.bind(this));
+            return this;
+        },
+
+        updateIcons: function() {
+            var icons = Common.UI.getSuitableIcons(this.iconsSet);
+            this.iconImg = this.baseUrl + icons['normal'];
+            this.updateIcon();
+        },
+
+        updateIcon: function() {
+            this.cmpEl && this.cmpEl.find('> a img').attr('src', this.iconImg).addClass('custom-icon');
+        },
+
+        applyScaling: function (ratio) {
+            if ( this.options.scaling !== ratio ) {
+                this.options.scaling = ratio;
+                this.updateIcons();
+            }
+        }
+    }, Common.UI.MenuItemCustom || {}));
 });

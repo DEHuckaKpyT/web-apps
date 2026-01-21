@@ -4,6 +4,9 @@ import {Page, Navbar, List, ListItem, BlockTitle, Segmented, Button, Icon} from 
 import { useTranslation } from 'react-i18next';
 import {Device} from '../../../../../common/mobile/utils/device';
 import { f7 } from 'framework7-react';
+import SvgIcon from '@common/lib/component/SvgIcon';
+import IconExpandDownAndroid from '@common-android-icons/icon-expand-down.svg';
+import IconExpandUp from '@common-android-icons/icon-expand-up.svg';
 
 const PageDocumentFormats = props => {
     const { t } = useTranslation();
@@ -93,11 +96,15 @@ const PageDocumentMargins = props => {
                     <div slot='after'>
                         <Segmented>
                             <Button outline className='decrement item-link' onClick={() => {onChangeMargins('top', true)}}>
-                                {isAndroid ? <Icon icon="icon-expand-down"></Icon> : ' - '}
+                                {isAndroid ? 
+                                    <SvgIcon symbolId={IconExpandDownAndroid.id} className='icon icon-svg' />
+                                : ' - '}
                             </Button>
                             {isAndroid && <label>{parseFloat(Common.Utils.Metric.fnRecalcFromMM(stateTop).toFixed(2)) + ' ' + metricText}</label>}
                             <Button outline className='increment item-link' onClick={() => {onChangeMargins('top', false)}}>
-                                {isAndroid ? <Icon icon="icon-expand-up"></Icon> : ' + '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandUp.id} className='icon icon-svg' />
+                                : ' + '}
                             </Button>
                         </Segmented>
                     </div>
@@ -107,11 +114,15 @@ const PageDocumentMargins = props => {
                     <div slot='after'>
                         <Segmented>
                             <Button outline className='decrement item-link' onClick={() => {onChangeMargins('bottom', true)}}>
-                                {isAndroid ? <Icon icon="icon-expand-down"></Icon> : ' - '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandDownAndroid.id} className='icon icon-svg' />
+                                : ' - '}
                             </Button>
                             {isAndroid && <label>{parseFloat(Common.Utils.Metric.fnRecalcFromMM(stateBottom).toFixed(2))+ ' ' + metricText}</label>}
                             <Button outline className='increment item-link' onClick={() => {onChangeMargins('bottom', false)}}>
-                                {isAndroid ? <Icon icon="icon-expand-up"></Icon> : ' + '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandUp.id} className='icon icon-svg' />
+                                : ' + '}
                             </Button>
                         </Segmented>
                     </div>
@@ -121,11 +132,15 @@ const PageDocumentMargins = props => {
                     <div slot='after'>
                         <Segmented>
                             <Button outline className='decrement item-link' onClick={() => {onChangeMargins('left', true)}}>
-                                {isAndroid ? <Icon icon="icon-expand-down"></Icon> : ' - '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandDownAndroid.id} className='icon icon-svg' />
+                                : ' - '}
                             </Button>
                             {isAndroid && <label>{parseFloat(Common.Utils.Metric.fnRecalcFromMM(stateLeft).toFixed(2))+ ' ' + metricText}</label>}
                             <Button outline className='increment item-link' onClick={() => {onChangeMargins('left', false)}}>
-                                {isAndroid ? <Icon icon="icon-expand-up"></Icon> : ' + '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandUp.id} className='icon icon-svg' />
+                                : ' + '}
                             </Button>
                         </Segmented>
                     </div>
@@ -135,11 +150,15 @@ const PageDocumentMargins = props => {
                     <div slot='after'>
                         <Segmented>
                             <Button outline className='decrement item-link' onClick={() => {onChangeMargins('right', true)}}>
-                                {isAndroid ? <Icon icon="icon-expand-down"></Icon> : ' - '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandDownAndroid.id} className='icon icon-svg' />
+                                : ' - '}
                             </Button>
                             {isAndroid && <label>{parseFloat(Common.Utils.Metric.fnRecalcFromMM(stateRight).toFixed(2))+ ' ' + metricText}</label>}
                             <Button outline className='increment item-link' onClick={() => {onChangeMargins('right', false)}}>
-                                {isAndroid ? <Icon icon="icon-expand-up"></Icon> : ' + '}
+                                {isAndroid ?
+                                    <SvgIcon symbolId={IconExpandUp.id} className='icon icon-svg' />
+                                : ' + '}
                             </Button>
                         </Segmented>
                     </div>
@@ -155,14 +174,6 @@ const PageDocumentColorSchemes = props => {
     const [stateScheme, setScheme] = useState(curScheme);
     const storeSettings = props.storeDocumentSettings;
     const allSchemes = storeSettings.allSchemes;
-    const SchemeNames = [ t('Settings.txtScheme22'),
-        t('Settings.txtScheme1'), t('Settings.txtScheme2'), t('Settings.txtScheme3'), t('Settings.txtScheme4'), 
-        t('Settings.txtScheme5'), t('Settings.txtScheme6'), t('Settings.txtScheme7'), t('Settings.txtScheme8'),
-        t('Settings.txtScheme9'), t('Settings.txtScheme10'), t('Settings.txtScheme11'), t('Settings.txtScheme12'),
-        t('Settings.txtScheme13'), t('Settings.txtScheme14'), t('Settings.txtScheme15'), t('Settings.txtScheme16'),
-        t('Settings.txtScheme17'), t('Settings.txtScheme18'), t('Settings.txtScheme19'), t('Settings.txtScheme20'),
-        t('Settings.txtScheme21')
-    ];
 
     return (
         <Page>
@@ -170,9 +181,8 @@ const PageDocumentColorSchemes = props => {
             <List>
                 {
                     allSchemes ? allSchemes.map((scheme, index) => {
-                        const name = scheme.get_name();
                         return (
-                            <ListItem radio={true} className="color-schemes-menu no-fastclick" key={index} title={(index < 22) ? (SchemeNames[index] || name) : name} checked={stateScheme === index}
+                            <ListItem radio={true} className="color-schemes-menu no-fastclick" key={index} title={scheme.get_name()} checked={stateScheme === index}
                                 onChange={() => {
                                     setScheme(index);
                                     setTimeout(() => props.onColorSchemeChange(index), 10);

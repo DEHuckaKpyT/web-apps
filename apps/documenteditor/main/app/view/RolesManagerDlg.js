@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,16 +33,13 @@
  *
  *  RolesManagerDlg.js
  *
- *  Created by Julia.Radzhabova on 12.04.22
- *  Copyright (c) 2022 Ascensio System SIA. All rights reserved.
+ *  Created on 12.04.22
  *
  */
 
-define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
+define([
+    'text!documenteditor/main/app/template/RolesManagerDlg.template',
     'common/main/lib/view/AdvancedSettingsWindow',
-    'common/main/lib/component/ListView',
-    'documenteditor/main/app/view/RoleEditDlg',
-    'documenteditor/main/app/view/RoleDeleteDlg'
 ], function (contentTemplate) {
     'use strict';
 
@@ -52,6 +49,7 @@ define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
         options: {
             alias: 'RolesManagerDlg',
             contentWidth: 500,
+            separator: false,
             buttons: ['close']
         },
 
@@ -59,7 +57,7 @@ define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
             var me = this;
             _.extend(this.options, {
                 title: this.txtTitle,
-                contentStyle: 'padding: 0;',
+                contentStyle: 'padding: 5px 0 0;',
                 contentTemplate: _.template(contentTemplate)({scope: this})
             }, options);
 
@@ -138,7 +136,7 @@ define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
         },
 
         getFocusedComponents: function() {
-            return [ this.btnUp, this.btnDown, this.rolesList, this.btnNewRole, this.btnEditRole, this.btnDeleteRole ].concat(this.getFooterButtons());
+            return [ this.btnUp, this.btnDown, this.btnNewRole, this.btnEditRole, this.btnDeleteRole, this.rolesList].concat(this.getFooterButtons());
         },
 
         getDefaultFocusableComponent: function () {
@@ -211,7 +209,7 @@ define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
             if (this._isWarningVisible) return;
 
             var me = this,
-                xy = me.$window.offset(),
+                xy = Common.Utils.getOffset(me.$window),
                 rec = this.rolesList.getSelectedRec();
 
             var win = new DE.Views.RoleEditDlg({
@@ -269,7 +267,7 @@ define([  'text!documenteditor/main/app/template/RolesManagerDlg.template',
                     }
                 });
             } else {
-                var xy = me.$window.offset();
+                var xy = Common.Utils.getOffset(me.$window);
                 var win = new DE.Views.RoleDeleteDlg({
                     props   : {roles: this.rolesList.store, excludeName: rec.get('name')},
                     handler : function(result, settings) {

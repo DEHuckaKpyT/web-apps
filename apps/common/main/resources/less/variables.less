@@ -11,6 +11,7 @@
 @app-image-path:            "../../resources/img";                    // use for data-uri(...)
 @common-image-path:         "../../../../common/main/resources/img";  // use for data-uri(...)
 @app-image-const-path:      "resources/img";                    // use for url(...)
+@app-sprite-base-path:      "./resources/img";
 @common-image-const-path:   "../../common/main/resources/img";        // use for url(...)
 
 // Grays
@@ -40,6 +41,15 @@
 @brand-danger:          #d9534f;
 @brand-info:            #5bc0de;
 
+@header-background-color-pdf-ie: @toolbar-header-pdf-ie;
+@header-background-color-pdf: var(--toolbar-header-pdf);
+@toolbar-header-text-on-background-pdf-ie: @text-toolbar-header-on-background-pdf-ie;
+@toolbar-header-text-on-background-pdf: var(--text-toolbar-header-on-background-pdf);
+@tab-header-pdf-ie: @tab-header-pdf-ie;
+@tab-header-pdf: var(--highlight-header-tab-underline-pdf);
+@tab-toolbar-pdf-ie: @tab-toolbar-pdf-ie;
+@tab-toolbar-pdf: var(--highlight-toolbar-tab-underline-pdf);
+
 // Scaffolding
 // -------------------------
 
@@ -57,17 +67,18 @@
 // -------------------------
 
 .rtl-font {
-    --font-family-base-custom: system-ui, -apple-system, "Geeza Pro", "Segoe UI", "Traditional Arabic", "Noto Sans";
+    &[applang=ar], &[applang=ur] {
+        --font-family-base-custom: system-ui, -apple-system, "Geeza Pro", "Segoe UI", "Traditional Arabic", "Noto Sans";
+    }
 }
 
 @font-family-sans-serif:  Arial, Helvetica, "Helvetica Neue", sans-serif;
 @font-family-serif:       Georgia, "Times New Roman", Times, serif;
 @font-family-monospace:   Menlo, Monaco, Consolas, "Courier New", monospace;
 @font-family-tahoma:      tahoma, arial, verdana, sans-serif;
-@font-family-base:        var(--font-family-base-custom, @font-family-sans-serif), @font-family-sans-serif;
+@font-family-base:        var(--font-family-base-custom, var(--font-family-base)), @font-family-sans-serif;
 
-@font-size-base-app:      11px;
-@font-size-base-app:      var(--font-size-base-app-custom, 11px);
+@font-size-base-app:      var(--font-size-base-app-custom, var(--font-size-base, 11px));
 
 @font-size-small:         9px;
 @font-size-base:          11px;
@@ -82,14 +93,17 @@
 @font-size-h5:            @font-size-base;
 @font-size-h6:            ceil(@font-size-base * 0.85);
 
-@line-height-base:        1.428571429; // 20/14
-@line-height-computed:    floor(@font-size-base * @line-height-base);
+@line-height-base:        var(--line-height-base, 1.428571429);
+@line-height-computed:    calc(@font-size-base * @line-height-base);
 
 @headings-font-family:    @font-family-base;
 @headings-font-weight:    500;
 @headings-line-height:    1.1;
 @headings-color:          inherit;
 
+@toolbar-height-tabs-top-title: 28px;
+@toolbar-height-tabs: 32px;
+@document-title-height: 28px;
 
 // Iconography
 // -------------------------
@@ -205,7 +219,8 @@
 
 @input-color-placeholder:        @text-tertiary; //#cfcfcf; // @gray;
 
-@input-height-base:              (floor(@font-size-base * @line-height-base) + (@padding-base-vertical * 2) + 5);
+@input-height-base:              calc(@font-size-base * @line-height-base + (@padding-base-vertical * 2) + 5);
+@input-height-base:              var(--input-height-base); // get from theme
 @input-height-large:             (ceil(@font-size-large * @line-height-large) + (@padding-large-vertical * 2) + 2);
 @input-height-small:             (floor(@font-size-small * @line-height-small) + (@padding-small-vertical * 2) + 2);
 
@@ -314,7 +329,7 @@
 @navbar-margin-bottom:             @line-height-computed;
 @navbar-border-radius:             @border-radius-base;
 @navbar-padding-horizontal:        floor((@grid-gutter-width / 2));
-@navbar-padding-vertical:          ((@navbar-height - @line-height-computed) / 2);
+@navbar-padding-vertical:          calc((@navbar-height - @line-height-computed) / 2);
 @navbar-collapse-max-height:       340px;
 
 @navbar-default-color:             #777;
@@ -735,73 +750,21 @@
 @common-controls: "controls/common-controls.png";
 @common-controls2x: "controls/common-controls@2x.png";
 
-// Dialog alerts
-@alerts-offset-x: 0;
-@alerts-offset-y: 0;
-
-// Dialog close
-@but-close-offset-x: -26px;
-@but-close-offset-y: -151px;
-
-// Dropdown arrow
-@arrow-small-offset-x: -85px;
-@arrow-small-offset-y: -96px;
-
-// Dropdown arrow up
-@arrow-up-small-offset-x: -85px;
-@arrow-up-small-offset-y: -104px;
-
-// Dropdown arrow big
-@arrow-big-offset-x: -41px;
-@arrow-big-offset-y: -144px;
-
-// Checkbox
-@checkbox-offset-x: -35px;
-@checkbox-offset-y: 0px;
-
-// Radio button
-@radio-offset-x: -35px;
-@radio-offset-y: -65px;
-
 // Menu check
-@menu-check-offset-x: -41px;
-@menu-check-offset-y: -172px;
-
-// Multislider thumb
-@slide-thumb-offset-x: -13px;
-@slide-thumb-offset-y: -150px;
-
-// Slider thumb
-@multislide-thumb-offset-x: 0px;
-@multislide-thumb-offset-y: -150px;
-
-// Slider track
-@slide-track-offset-x: 0px;
-@slide-track-offset-y: -195px;
+@menu-check-offset-x: -40px;
+@menu-check-offset-y: -28px;
 
 // Input error
-@input-error-offset-x: -73px;
-@input-error-offset-y: -169px;
+@input-error-offset-x: -72px;
+@input-error-offset-y: -28px;
 
 // Input warning
-@input-warning-offset-x: -57px;
-@input-warning-offset-y: -169px;
-
-// Spinner
-@spinner-offset-x: -41px;
-@spinner-offset-y: -187px;
+@input-warning-offset-x: -56px;
+@input-warning-offset-y: -28px;
 
 // Search dialog
-@search-dlg-offset-x: -36px;
-@search-dlg-offset-y: -96px;
-
-// No color
-@nocolor-offset-x: 0;
-@nocolor-offset-y: -137px;
-
-// Plus
-@plus-offset-x: -80px;
-@plus-offset-y: -184px;
+@search-dlg-offset-x: -40px;
+@search-dlg-offset-y: 4px;
 
 @dl-horizontal-offset:        @component-offset-horizontal;
 // Point at which .dl-horizontal becomes horizontal

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,20 +30,10 @@
  *
  */
 /**
- * User: Julia.Radzhabova
  * Date: 30.07.19
  */
 
-define([
-    'common/main/lib/util/utils',
-    'common/main/lib/component/BaseView',
-    'common/main/lib/component/Layout',
-    'common/main/lib/component/Button',
-    'common/main/lib/component/ListView',
-    'common/main/lib/component/InputField',
-    'common/main/lib/component/ComboBox',
-    'common/main/lib/component/ComboDataView'
-], function (template) {
+define([], function () {
     'use strict';
 
     SSE.Views.Spellcheck = Common.UI.BaseView.extend(_.extend({
@@ -59,7 +49,7 @@ define([
                         '</div>',
                         '<div id="spellcheck-suggestions-list"></div>',
                         '<div id="spellcheck-change" style=""></div>',
-                        '<div id="spellcheck-ignore" class="padding-large margin-left-9"></div>',
+                        '<div id="spellcheck-ignore" class="padding-large margin-left-6"></div>',
                         '<button class="btn btn-text-default auto" id="spellcheck-add-to-dictionary" data-hint="1" data-hint-direction="bottom" data-hint-offset="big"><%= scope.txtAddToDictionary %></button>',
                         '<label class="header" style="display: block;"><%= scope.txtDictionaryLanguage %></label>',
                         '<div id="spellcheck-dictionary-language"></div>',
@@ -70,7 +60,7 @@ define([
                     '</div>',
                 '</div>',
                 '<div id="spellcheck-header">',
-                    '<label><%= scope.txtSpelling %></label>',
+                    '<label role="heading"><%= scope.txtSpelling %></label>',
                     '<div id="spellcheck-btn-close" class="float-right margin-left-4"></div>',
                 '</div>',
             '</div>'
@@ -110,7 +100,7 @@ define([
             this.buttonNext = new Common.UI.Button({
                 parentEl: $('#spellcheck-next'),
                 cls: 'btn-toolbar bg-white',
-                iconCls: 'toolbar__icon btn-nextitem',
+                iconCls: 'toolbar__icon btn-nextitem icon-rtl',
                 hint: this.txtNextTip,
                 dataHint: '1',
                 dataHintDirection: 'bottom'
@@ -176,7 +166,7 @@ define([
                 dataHintOffset: 'big'
             });
 
-            this.cmbDictionaryLanguage = new Common.UI.ComboBox({
+            this.cmbDictionaryLanguage = new Common.UI.ComboBoxRecent({
                 el          : $('#spellcheck-dictionary-language'),
                 style       : 'width: 100%',
                 menuStyle   : 'width: 100%;max-height: 163px;',
@@ -185,7 +175,18 @@ define([
                 scroller    : {
                     suppressScrollX: true
                 },
+                itemTemplate: _.template([
+                        '<li id="<%= id %>" data-value="<%= value %>">',
+                            '<a tabindex="-1" type="menuitem" role="menuitemcheckbox" aria-checked="false">',
+                                '<div>',
+                                    '<%= displayValue %>',
+                                '</div>',
+                                '<label style="opacity: 0.6"><%= displayValueEn %></label>',
+                            '</a>',
+                        '</li>',
+                ].join('')),
                 search: true,
+                searchFields: ['displayValue', 'displayValueEn'],
                 dataHint: '1',
                 dataHintDirection: 'bottom',
                 dataHintOffset: 'big'
@@ -211,6 +212,7 @@ define([
                 this.scroller.update({alwaysVisibleY: true});
             }, this));
 
+            this.rendered = true;
             return this;
         },
 

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -29,13 +29,6 @@
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
  */
-/**
- *  StatusBar View
- *
- *  Created by Maxim Kadushkin
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
- *
- */
 
 define([
     'text!pdfeditor/main/app/template/StatusBar.template',
@@ -52,6 +45,8 @@ define([
 
         function _onCountPages(count){
             this.pages.set('count', count);
+            this.btnPagePrev && this.btnPagePrev.setDisabled(this.pages.get('current')-1<1);
+            this.btnPageNext && this.btnPageNext.setDisabled(this.pages.get('current')-1>=this.pages.get('count')-1);
         }
 
         function _onCurrentPage(number){
@@ -75,10 +70,18 @@ define([
             }
             me.btnZoomToPage.updateHint(me.tipFitPage);
             me.btnZoomToWidth.updateHint(me.tipFitWidth);
-            me.btnZoomDown.updateHint(me.tipZoomOut + Common.Utils.String.platformKey('Ctrl+-'));
-            me.btnZoomUp.updateHint(me.tipZoomIn + Common.Utils.String.platformKey('Ctrl++'));
             me.btnPagePrev.updateHint(me.tipPagePrev);
             me.btnPageNext.updateHint(me.tipPageNext);
+            PDFE.getController('Common.Controllers.Shortcuts').updateShortcutHints({
+                ZoomOut: {
+                    btn: me.btnZoomDown,
+                    label: me.tipZoomOut
+                },
+                ZoomIn: {
+                    btn: me.btnZoomUp,
+                    label: me.tipZoomIn
+                }
+            });
 
             me.cntZoom.updateHint(me.tipZoomFactor);
             me.cntZoom.cmpEl.on({
@@ -250,7 +253,7 @@ define([
 
                 this.btnPagePrev = new Common.UI.Button({
                     cls         : 'btn-toolbar',
-                    iconCls: 'toolbar__icon btn-previtem',
+                    iconCls: 'toolbar__icon btn-previtem icon-rtl',
                     disabled: true,
                     hintAnchor  : 'top',
                     dataHint    : '0',
@@ -259,7 +262,7 @@ define([
 
                 this.btnPageNext = new Common.UI.Button({
                     cls         : 'btn-toolbar',
-                    iconCls: 'toolbar__icon btn-nextitem',
+                    iconCls: 'toolbar__icon btn-nextitem icon-rtl',
                     disabled: true,
                     hintAnchor  : 'top-left',
                     dataHint    : '0',

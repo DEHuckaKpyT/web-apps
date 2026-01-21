@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *    View
  *
- *    Created by Olga Sharova on 20.04.2023
- *    Copyright (c) 2023 Ascensio System SIA. All rights reserved.
+ *    Created on 20.04.2023
  *
  */
 if (Common === undefined)
@@ -82,11 +81,12 @@ define([
                     '<div class="recent-wrap">',
                         '<div class="recent-icon">',
                             '<div>',
+                                '<svg><use href="#<% if (typeof format !== "undefined" && format && format.length > 0) { %><%= format %><% } else { %>neutral<% } %>"></use></svg>',
                                 '<div class= <% if (typeof format !== "undefined") {%> "img-format-<%=format %>"<% } else {%> "svg-file-recent"<%} %>></div>',
                             '</div>',
                         '</div>',
-                        '<div class="file-name"><% if (typeof title !== "undefined") {%><%= Common.Utils.String.htmlEncode(title || "") %><% } %></div>',
-                        '<div class="file-info"><% if (typeof folder !== "undefined") {%><%= Common.Utils.String.htmlEncode(folder || "") %><% } %></div>',
+                        '<div class="file-name"><% if (typeof title !== "undefined") {%><%= title || "" %><% } %></div>',
+                        '<div class="file-info"><% if (typeof folder !== "undefined") {%><%= folder || "" %><% } %></div>',
                     '</div>'
                 ].join(''))
             });

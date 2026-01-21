@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *    View for viewport
  *
- *    Created by Maxim Kadushkin on 24 March 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 24 March 2014
  *
  */
 
@@ -99,7 +98,10 @@ define([
                 }, {
                     el: items[3],
                     alias: 'statusbar',
-                    height: Common.localStorage.getBool('sse-compact-statusbar', true) ? 25 : 50
+                    height: (function () {
+                        var h = parseInt(getComputedStyle(document.body).getPropertyValue('--statusbar-height') || 25);
+                        return Common.localStorage.getBool('sse-compact-statusbar', true) ? h : h * 2;
+                    })()
                 }]
             });
 
@@ -155,11 +157,8 @@ define([
                 items: [{
                     el: items[0],
                     rely: true,
-                    resize: {
-                        min: 19,
-                        max: -100,
-                        multiply: { koeff: 18, offset: 2}
-                    }
+                    alias: 'celleditor',
+                    resize: this.getCelleditorResizeOptions()
                 }, {
                     el: items[1],
                     stretch: true
@@ -167,6 +166,18 @@ define([
             });
 
             return this;
+        },
+
+        getCelleditorResizeOptions: function() {
+            var computedStyle = window.getComputedStyle(document.body);
+            var resizeOptions = {
+                min: (parseFloat(computedStyle.getPropertyValue("--celleditor-height")) || 20) - 1,
+                max: -100,
+                multiply: {}
+            }; 
+            resizeOptions.multiply.koeff = parseFloat(computedStyle.getPropertyValue("--celleditor-line-height")) || 18;
+            resizeOptions.multiply.offset = (parseInt(computedStyle.getPropertyValue("--celleditor-height")) || 20) - resizeOptions.multiply.koeff;
+            return resizeOptions;
         },
 
         applyEditorMode: function() {

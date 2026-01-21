@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,8 +33,7 @@
 /**
  *  ViewTab.js
  *
- *  Created by Julia Svinareva on 06.12.2021
- *  Copyright (c) 2021 Ascensio System SIA. All rights reserved.
+ *  Created on 06.12.2021
  *
  */
 
@@ -61,12 +60,17 @@ define([
             Common.NotificationCenter.on('contenttheme:dark', this.onContentThemeChangedToDark.bind(this));
             Common.NotificationCenter.on('uitheme:changed', this.onThemeChanged.bind(this));
             Common.NotificationCenter.on('document:ready', _.bind(this.onDocumentReady, this));
+            Common.NotificationCenter.on('tabstyle:changed', this.onTabStyleChange.bind(this));
         },
 
         setApi: function (api) {
             if (api) {
                 this.api = api;
                 this.api.asc_registerCallback('asc_onZoomChange', _.bind(this.onZoomChange, this));
+                this.api.asc_registerCallback('asc_onMacroRecordingStart', _.bind(this.updateMacroState, this, true, false));
+                this.api.asc_registerCallback('asc_onMacroRecordingStop', _.bind(this.updateMacroState, this, false));
+                this.api.asc_registerCallback('asc_onMacroRecordingPause', _.bind(this.updateMacroState, this, true, true));
+                this.api.asc_registerCallback('asc_onMacroRecordingResume', _.bind(this.updateMacroState, this, true, false));
                 this.api.asc_registerCallback('asc_onCoAuthoringDisconnect', _.bind(this.onCoAuthoringDisconnect, this));
                 Common.NotificationCenter.on('api:disconnect', _.bind(this.onCoAuthoringDisconnect, this));
             }
@@ -86,7 +90,12 @@ define([
                     'zoom:topage': _.bind(this.onBtnZoomTo, this, 'topage'),
                     'zoom:towidth': _.bind(this.onBtnZoomTo, this, 'towidth'),
                     'rulers:change': _.bind(this.onChangeRulers, this),
-                    'darkmode:change': _.bind(this.onChangeDarkMode, this)
+                    'darkmode:change': _.bind(this.onChangeDarkMode, this),
+                    'macros:click':  _.bind(this.onClickMacros, this),
+                    'macros:record':  _.bind(this.onClickMacrosRec, this),
+                    'macros:pause':  _.bind(this.onClickMacrosPause, this),
+                    'pointer:select': _.bind(this.onPointerType, this, 'select'),
+                    'pointer:hand': _.bind(this.onPointerType, this, 'hand')
                 },
                 'Toolbar': {
                     'view:compact': _.bind(function (toolbar, state) {
@@ -101,6 +110,11 @@ define([
                 'LeftMenu': {
                     'view:hide': _.bind(function (leftmenu, state) {
                         this.view.chLeftMenu.setValue(!state, true);
+                    }, this)
+                },
+                'RightMenu': {
+                    'view:hide': _.bind(function (leftmenu, state) {
+                        this.view.chRightMenu.setValue(!state, true);
                     }, this)
                 }
             });
@@ -167,25 +181,68 @@ define([
                         me.view.$el.find('.separator-rulers').remove();
                     }
 
-                    me.view.cmbZoom.on('selected', _.bind(me.onSelectedZoomValue, me))
-                        .on('changed:before',_.bind(me.onZoomChanged, me, true))
-                        .on('changed:after', _.bind(me.onZoomChanged, me, false))
-                        .on('combo:blur',    _.bind(me.onComboBlur, me, false));
+                    if (
+                        !config.isEdit || 
+                        config.customization && config.customization.macros===false ||
+                        (Common.Controllers.Desktop && Common.Controllers.Desktop.isWinXp())
+                    ) {
+                        me.view.$el.find('.macro').remove();
+                    }
+
+                    me.view.cmbsZoom.forEach(function (cmb) {
+                        cmb.on('selected', _.bind(me.onSelectedZoomValue, me))
+                            .on('changed:before',_.bind(me.onZoomChanged, me, true))
+                            .on('changed:after', _.bind(me.onZoomChanged, me, false))
+                            .on('combo:blur',    _.bind(me.onComboBlur, me, false));
+                    });
 
                     me.getApplication().getController('LeftMenu').leftMenu.btnNavigation.on('toggle', function (btn, state) {
                         if (state !== me.view.btnNavigation.pressed)
                             me.view.turnNavigation(state);
                     });
 
+                    if (me.view.btnHandTool) {
+                        var hand = config && config.customization && config.customization.pointerMode==='hand';
+                        me.api && me.api.asc_setViewerTargetType(hand ? 'hand' : 'select');
+                        me.view[hand ? 'btnHandTool' : 'btnSelectTool'].toggle(true, true);
+                    }
+
                     if (Common.UI.Themes.available()) {
+                        function _add_tab_styles() {
+                            let btn = me.view.btnInterfaceTheme;
+                            if ( typeof(btn.menu) === 'object' )
+                                btn.menu.addItem({caption: '--'}, true);
+                            else
+                                btn.setMenu(new Common.UI.Menu());
+                            let mni = new Common.UI.MenuItem({
+                                value: -1,
+                                caption: me.view.textTabStyle,
+                                menu: new Common.UI.Menu({
+                                    menuAlign: 'tl-tr',
+                                    items: [
+                                        {value: 'fill', caption: me.view.textFill, checkable: true, toggleGroup: 'tabstyle'},
+                                        {value: 'line', caption: me.view.textLine, checkable: true, toggleGroup: 'tabstyle'}
+                                    ]
+                                })
+                            });
+                            _.each(mni.menu.items, function(item){
+                                item.setChecked(Common.Utils.InternalSettings.get("settings-tab-style")===item.value, true);
+                            });
+                            mni.menu.on('item:click', _.bind(function (menu, item) {
+                                Common.UI.TabStyler.setStyle(item.value);
+                            }, me));
+                            btn.menu.addItem(mni, true);
+                            me.view.menuTabStyle = mni.menu;
+                        }
                         function _fill_themes() {
-                            var btn = this.view.btnInterfaceTheme;
-                            if ( typeof(btn.menu) == 'object' ) btn.menu.removeAll();
+                            let btn = this.view.btnInterfaceTheme;
+                            if ( typeof(btn.menu) == 'object' ) btn.menu.removeAll(true);
                             else btn.setMenu(new Common.UI.Menu());
 
-                            var currentTheme = Common.UI.Themes.currentThemeId() || Common.UI.Themes.defaultThemeId();
+                            var currentTheme = Common.UI.Themes.currentThemeId() || Common.UI.Themes.defaultThemeId(),
+                                idx = 0;
                             for (var t in Common.UI.Themes.map()) {
-                                btn.menu.addItem({
+                                btn.menu.insertItem(idx++, {
                                     value: t,
                                     caption: Common.UI.Themes.get(t).text,
                                     checked: t === currentTheme,
@@ -193,12 +250,13 @@ define([
                                     toggleGroup: 'interface-theme'
                                 });
                             }
+                            // Common.UI.FeaturesManager.canChange('tabStyle', true) && _add_tab_styles();
                         }
 
                         Common.NotificationCenter.on('uitheme:countchanged', _fill_themes.bind(me));
                         _fill_themes.call(me);
 
-                        if (me.view.btnInterfaceTheme.menu.items.length) {
+                        if (me.view.btnInterfaceTheme.menu.getItemsLength(true)) {
                             // me.view.btnInterfaceTheme.setMenu(new Common.UI.Menu({items: menuItems}));
                             me.view.btnInterfaceTheme.menu.on('item:click', _.bind(function (menu, item) {
                                 var value = item.value;
@@ -212,6 +270,9 @@ define([
                             }, 0);
                         }
                     }
+
+                    if (Common.Utils.InternalSettings.get('toolbar-active-tab')==='view')
+                        Common.NotificationCenter.trigger('tab:set-active', 'view');
                 });
             }
         },
@@ -221,10 +282,14 @@ define([
         },
 
         onZoomChange: function (percent, type) {
-            this.view.btnFitToPage.toggle(type == 2, true);
-            this.view.btnFitToWidth.toggle(type == 1, true);
+            this.view.btnsFitToPage.forEach(function (btn) {
+                btn.toggle(type === 2, true);
+            });
+            this.view.btnsFitToWidth.forEach(function (btn) {
+                btn.toggle(type === 1, true);
+            });
 
-            this.view.cmbZoom.setValue(percent, percent + '%');
+            this.setZoomValue(percent);
 
             this._state.zoomValue = percent;
         },
@@ -232,7 +297,7 @@ define([
         applyZoom: function (value) {
             var val = Math.max(10, Math.min(500, value));
             if (this._state.zoomValue === val)
-                this.view.cmbZoom.setValue(this._state.zoomValue, this._state.zoomValue + '%');
+                this.setZoomValue(this._state.zoomValue);
             this.api.zoom(val);
             Common.NotificationCenter.trigger('edit:complete', this.view);
         },
@@ -246,28 +311,32 @@ define([
             if (before) {
                 var expr = new RegExp('^\\s*(\\d*(\\.|,)?\\d+)\\s*(%)?\\s*$');
                 if (!expr.exec(record.value)) {
-                    this.view.cmbZoom.setValue(this._state.zoomValue, this._state.zoomValue + '%');
+                    this.setZoomValue(this._state.zoomValue);
                     Common.NotificationCenter.trigger('edit:complete', this.view);
                 }
             } else {
                 if (this._state.zoomValue !== value && !isNaN(value)) {
                     this.applyZoom(value);
                 } else if (record.value !== this._state.zoomValue + '%') {
-                    this.view.cmbZoom.setValue(this._state.zoomValue, this._state.zoomValue + '%');
+                    this.setZoomValue(this._state.zoomValue);
                 }
             }
         },
 
-        onBtnZoomTo: function(type) {
-            var btn, func;
+        setZoomValue: function(value) {
+            this.view && this.view.cmbsZoom && this.view.cmbsZoom.forEach(function (cmb) {
+                cmb.setValue(value, value + '%');
+            });
+        },
+
+        onBtnZoomTo: function(type, btn) {
+            var func;
             if ( type === 'topage' ) {
-                btn = 'btnFitToPage';
                 func = 'zoomFitToPage';
             } else {
-                btn = 'btnFitToWidth';
                 func = 'zoomFitToWidth';
             }
-            if ( !this.view[btn].pressed )
+            if ( btn && !btn.pressed )
                 this.api.zoomCustomMode();
             else
                 this.api[func]();
@@ -282,8 +351,56 @@ define([
             Common.NotificationCenter.trigger('edit:complete', this.view);
         },
 
-        onChangeDarkMode: function () {
-            Common.UI.Themes.toggleContentTheme();
+        onClickMacros: function() {
+            var me = this;
+            var macrosWindow = new Common.Views.MacrosDialog({
+                api: this.api,
+            });
+            macrosWindow.show();
+        },
+
+        onClickMacrosRec: function() {
+            var recorder = this.api.getMacroRecorder();
+            recorder.isInProgress() ? recorder.stop() : recorder.start();
+            Common.NotificationCenter.trigger('edit:complete', this.view);
+        },
+
+        onClickMacrosPause: function() {
+            var recorder = this.api.getMacroRecorder();
+            if (recorder.isInProgress()) {
+                recorder.isPaused() ? recorder.resume() : recorder.pause();
+            }
+            Common.NotificationCenter.trigger('edit:complete', this.view);
+        },
+
+        updateMacroState: function(inProgress, paused) {
+            if (this.view) {
+                this.view.btnRecMacro.changeIcon({
+                    next: inProgress ? 'btn-macros-stop' : 'btn-macros-record',
+                    curr: inProgress ? 'btn-macros-record' : 'btn-macros-stop'
+                });
+                this.view.btnRecMacro.setCaption(inProgress ? this.view.textStopMacro : this.view.textRecMacro);
+                this.view.btnRecMacro.updateHint(inProgress ? this.view.tipStopMacro : this.view.tipRecMacro);
+                Common.Utils.lockControls(Common.enumLock.macrosStopped, !inProgress, {array: [this.view.btnPauseMacro]});
+                if (!inProgress) {
+                    this.view.btnPauseMacro.setCaption(this.view.textPauseMacro);
+                    this.view.btnPauseMacro.updateHint(this.view.tipPauseMacro);
+                } else {
+                    this.view.btnPauseMacro.setCaption(paused ? this.view.textResumeMacro : this.view.textPauseMacro);
+                    this.view.btnPauseMacro.updateHint(paused ? this.view.tipResumeMacro : this.view.tipPauseMacro);
+                }
+            }
+        },
+
+        onChangeDarkMode: function (isdarkmode) {
+            if (!this._darkModeTimer) {
+                var me = this;
+                me._darkModeTimer = setTimeout(function() {
+                    me._darkModeTimer = undefined;
+                }, 500);
+                Common.UI.Themes.setContentTheme(isdarkmode?'dark':'light');
+            } else
+                this.onContentThemeChangedToDark(Common.UI.Themes.isContentThemeDark());
         },
 
         onContentThemeChangedToDark: function (isdark) {
@@ -291,19 +408,34 @@ define([
         },
 
         onThemeChanged: function () {
-            if (this.view && Common.UI.Themes.available()) {
+            if (this.view && Common.UI.Themes.available() && this.view.btnInterfaceTheme.menu && (typeof (this.view.btnInterfaceTheme.menu) === 'object')) {
                 var current_theme = Common.UI.Themes.currentThemeId() || Common.UI.Themes.defaultThemeId(),
-                    menu_item = _.findWhere(this.view.btnInterfaceTheme.menu.items, {value: current_theme});
+                    menu_item = _.findWhere(this.view.btnInterfaceTheme.menu.getItems(true), {value: current_theme});
                 if ( menu_item ) {
-                    this.view.btnInterfaceTheme.menu.clearAll();
+                    this.view.btnInterfaceTheme.menu.clearAll(true);
                     menu_item.setChecked(true, true);
                 }
                 Common.Utils.lockControls(Common.enumLock.inLightTheme, !Common.UI.Themes.isDarkTheme(), {array: [this.view.btnDarkDocument]});
             }
         },
 
+        onTabStyleChange: function () {
+            if (this.view && this.view.menuTabStyle) {
+                _.each(this.view.menuTabStyle.items, function(item){
+                    item.setChecked(Common.Utils.InternalSettings.get("settings-tab-style")===item.value, true);
+                });
+            }
+        },
+
         onComboBlur: function() {
             Common.NotificationCenter.trigger('edit:complete', this.view);
+        },
+
+        onPointerType: function (type) {
+            if (this.api) {
+                this.api.asc_setViewerTargetType(type);
+                Common.NotificationCenter.trigger('edit:complete', this.view);
+            }
         }
 
     }, DE.Controllers.ViewTab || {}));

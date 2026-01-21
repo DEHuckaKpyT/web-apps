@@ -1,11 +1,22 @@
 import React, { useContext, useEffect } from 'react';
 import { Page, Navbar, NavRight, NavTitle, Link, Icon, Tabs, Tab, f7 } from 'framework7-react';
 import { useTranslation } from 'react-i18next';
+import { observer, inject } from "mobx-react";
 import { Device } from '../../../../../common/mobile/utils/device';
 import AddSlideController from "../../controller/add/AddSlide";
 import AddShapeController from "../../controller/add/AddShape";
 import { AddOtherController } from "../../controller/add/AddOther";
 import { MainContext } from '../../page/main';
+import SvgIcon from '@common/lib/component/SvgIcon';
+import IconAddShapeIos from '@common-ios-icons/icon-add-shape.svg?ios';
+import IconAddShapeAndroid from '@common-android-icons/icon-add-shape.svg';
+import IconAddOtherIos from '@common-ios-icons/icon-add-other.svg?ios';
+import IconAddOtherAndroid from '@common-android-icons/icon-add-other.svg';
+import IconAddSlideIos from '@ios-icons/icon-add-slide.svg?ios';
+import IconAddSlideAndroid from '@android-icons/icon-add-slide.svg';
+import IconExpandDownIos from '@common-ios-icons/icon-expand-down.svg?ios';
+import IconExpandDownAndroid from '@common-android-icons/icon-expand-down.svg';
+
 
 const AddLayoutNavbar = ({ tabs }) => {
     const isAndroid = Device.android;
@@ -16,13 +27,18 @@ const AddLayoutNavbar = ({ tabs }) => {
                 <div className='tab-buttons tabbar'>
                     {tabs.map((item, index) =>
                         <Link key={"pe-link-" + item.id} tabLink={"#" + item.id} tabLinkActive={index === 0}>
-                            <Icon slot="media" icon={item.icon}></Icon>
+                            {/* <Icon slot="media" icon={item.icon}></Icon> */}
+                            <SvgIcon symbolId={item.icon} className={'icon icon-svg'} />
                         </Link>)}
                     {isAndroid && <span className='tab-link-highlight' style={{width: 100 / tabs.lenght + '%'}}></span>}
                 </div> :
                 <NavTitle>{tabs[0].caption}</NavTitle>
             }
-            {Device.phone && <NavRight><Link icon='icon-expand-down' popupClose=".add-popup"></Link></NavRight> }
+            {Device.phone && <NavRight><Link popupClose=".add-popup">
+            {Device.ios ? 
+                <SvgIcon symbolId={IconExpandDownIos.id} className={'icon icon-svg'} /> :
+                <SvgIcon symbolId={IconExpandDownAndroid.id} className={'icon icon-svg white'} />
+            }</Link></NavRight> }
         </Navbar>
     )
 };
@@ -39,10 +55,12 @@ const AddLayoutContent = ({ tabs }) => {
     )
 };
 
-const AddingPage = () => {
+const AddingPage = inject("storeApplicationSettings")(observer(props => {
     const { t } = useTranslation();
     const _t = t('View.Add', {returnObjects: true});
     const api = Common.EditorApi.get();
+    const storeApplicationSettings = props.storeApplicationSettings;
+    const directionMode = storeApplicationSettings.directionMode;
     const countPages = api.getCountPages();
     const mainContext = useContext(MainContext);
     const showPanels = mainContext.showPanels;
@@ -51,19 +69,25 @@ const AddingPage = () => {
     useEffect(() => {
         f7.tab.show('#add-other', false);
     }, []);
+
+    useEffect(() => {
+        if(directionMode === 'rtl') {
+            tabs.reverse();
+        }
+    }, [directionMode])
     
     if (!showPanels && countPages) {
         tabs.push({
             caption: _t.textSlide,
             id: 'add-slide',
-            icon: 'icon-add-slide',
+            icon: Device.ios ? IconAddSlideIos.id : IconAddSlideAndroid.id,
             component: <AddSlideController />
         });
 
         tabs.push({
             caption: _t.textShape,
             id: 'add-shape',
-            icon: 'icon-add-shape',
+            icon: Device.ios ? IconAddShapeIos.id : IconAddShapeAndroid.id,
             component: <AddShapeController/>
         });
 
@@ -77,7 +101,7 @@ const AddingPage = () => {
         tabs.push({
             caption: _t.textOther,
             id: 'add-other',
-            icon: 'icon-add-other',
+            icon: Device.ios ? IconAddOtherIos.id : IconAddOtherAndroid.id,
             component: <AddOtherController />
         });
     }
@@ -86,7 +110,7 @@ const AddingPage = () => {
         tabs.push({
             caption: _t.textSlide,
             id: 'add-slide',
-            icon: 'icon-add-slide',
+            icon: Device.ios ? IconAddSlideIos.id : IconAddSlideAndroid.id,
             component: <AddSlideController />
         });
     }
@@ -105,6 +129,6 @@ const AddingPage = () => {
             <AddLayoutContent tabs={tabs} />
         </Page>
     )
-};
+}));
 
 export default AddingPage;

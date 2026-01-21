@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,7 @@
 /**
  *    app.js
  *
- *    Created by Julia Radzhabova on 26 March 2014
- *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *    Created on 26 March 2014
  *
  */
 
@@ -47,7 +46,6 @@ require.config({
         jquery          : '../vendor/jquery/jquery',
         underscore      : '../vendor/underscore/underscore',
         backbone        : '../vendor/backbone/backbone',
-        bootstrap       : '../vendor/bootstrap/dist/js/bootstrap',
         text            : '../vendor/requirejs-text/text',
         perfectscrollbar: 'common/main/lib/mods/perfect-scrollbar',
         jmousewheel     : '../vendor/perfect-scrollbar/src/jquery.mousewheel',
@@ -67,20 +65,12 @@ require.config({
         irregularstack  : 'common/IrregularStack'
     },
     shim: {
-        underscore: {
-            exports: '_'
-        },
         backbone: {
             deps: [
                 'underscore',
                 'jquery'
             ],
             exports: 'Backbone'
-        },
-        bootstrap: {
-            deps: [
-                'jquery'
-            ]
         },
         perfectscrollbar: {
             deps: [
@@ -123,15 +113,16 @@ require.config({
 require([
     'sdk',
     'backbone',
-    'bootstrap',
+    'underscore',
     'core',
     'analytics',
     'gateway',
     'locale'
-], function (Sdk, Backbone, Bootstrap, Core) {
+], function (Sdk, Backbone, _, Core) {
     if (Backbone.History && Backbone.History.started)
         return;
     Backbone.history.start();
+    window._ = _;
 
     /**
      * Application instance with PE namespace defined
@@ -148,6 +139,7 @@ require([
             'LeftMenu',
             'Main',
             'ViewTab',
+            'SlideMasterTab',
             'Search',
             'Print',
             'Common.Controllers.Fonts',
@@ -157,11 +149,13 @@ require([
             ,'Common.Controllers.Comments'
             ,'Common.Controllers.Draw'
             /** coauthoring end **/
+            ,'Common.Controllers.ExternalLinks'
             ,'Common.Controllers.Plugins'
             ,'Common.Controllers.ExternalDiagramEditor'
             ,'Common.Controllers.ExternalOleEditor'
             ,'Common.Controllers.ReviewChanges'
             ,'Common.Controllers.Protection'
+            ,'Common.Controllers.Shortcuts'
             ,'Transitions'
             ,'Animation'
         ]
@@ -169,9 +163,12 @@ require([
 
     Common.Locale.apply(function(){
         require([
+            'common/main/lib/mods/dropdown',
+            'common/main/lib/mods/tooltip',
             'common/main/lib/util/LocalStorage',
             'common/main/lib/controller/Scaling',
             'common/main/lib/controller/Themes',
+            'common/main/lib/controller/TabStyler',
             'common/main/lib/controller/Desktop',
             'presentationeditor/main/app/controller/Viewport',
             'presentationeditor/main/app/controller/DocumentHolder',
@@ -181,16 +178,16 @@ require([
             'presentationeditor/main/app/controller/LeftMenu',
             'presentationeditor/main/app/controller/Main',
             'presentationeditor/main/app/controller/ViewTab',
+            'presentationeditor/main/app/controller/SlideMasterTab',
             'presentationeditor/main/app/controller/Search',
             'presentationeditor/main/app/controller/Print',
-            'presentationeditor/main/app/view/FileMenuPanels',
-            'presentationeditor/main/app/view/ParagraphSettings',
-            'presentationeditor/main/app/view/ImageSettings',
-            'presentationeditor/main/app/view/ShapeSettings',
-            'presentationeditor/main/app/view/SlideSettings',
-            'presentationeditor/main/app/view/TableSettings',
-            'presentationeditor/main/app/view/TextArtSettings',
-            'presentationeditor/main/app/view/SignatureSettings',
+            // 'presentationeditor/main/app/view/ParagraphSettings',
+            // 'presentationeditor/main/app/view/ImageSettings',
+            // 'presentationeditor/main/app/view/ShapeSettings',
+            // 'presentationeditor/main/app/view/SlideSettings',
+            // 'presentationeditor/main/app/view/TableSettings',
+            // 'presentationeditor/main/app/view/TextArtSettings',
+            // 'presentationeditor/main/app/view/SignatureSettings',
             'common/main/lib/util/utils',
             'common/main/lib/controller/Fonts',
             'common/main/lib/controller/History'
@@ -198,16 +195,23 @@ require([
             ,'common/main/lib/controller/Comments',
             'common/main/lib/controller/Chat',
             /** coauthoring end **/
+            'common/main/lib/controller/ExternalLinks',
             'common/main/lib/controller/Plugins',
             'presentationeditor/main/app/view/ChartSettings',
             'common/main/lib/controller/ExternalDiagramEditor'
             ,'common/main/lib/controller/ExternalOleEditor'
             ,'common/main/lib/controller/ReviewChanges'
             ,'common/main/lib/controller/Protection'
+            ,'common/main/lib/controller/Shortcuts'
             ,'common/main/lib/controller/Draw'
             ,'presentationeditor/main/app/controller/Transitions'
             ,'presentationeditor/main/app/controller/Animation'
         ], function() {
+            const code_path = !window.isIEBrowser ? 'presentationeditor/main/code' : 'presentationeditor/main/ie/code';            
+            app.postLaunchScripts = [
+                code_path,
+            ];
+
             app.start();
         });
     });

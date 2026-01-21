@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2023
+ * (c) Copyright Ascensio System SIA 2010-2024
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,7 @@
  *
  *  Add formula to cell dialog
  *
- *  Created by Alexey.Musinov on 11/04/14
- *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
+ *  Created on 11/04/14
  *
  */
 
@@ -70,7 +69,7 @@ define([
             this.template   =   options.template || [
                 '<div class="box" style="height:405px;">',
                     '<div class="content-panel" >',
-                        '<div id="formula-dlg-search" style="height:22px; margin-bottom:10px;"></div>',
+                        '<div id="formula-dlg-search" style="margin-bottom:10px;"></div>',
                         '<label class="header">' + t.textGroupDescription + '</label>',
                         '<div id="formula-dlg-combo-group" class="input-group-nr" style=""></div>',
                         '<label class="header" style="margin-top: 10px">' + t.textListDescription + '</label>',
@@ -419,9 +418,9 @@ define([
 
         onScrollToRecordCustom: function (record) {
             var innerEl = $(this.el).find('.inner');
-            var inner_top = innerEl.offset().top;
+            var inner_top = Common.Utils.getOffset(innerEl).top;
             var div = innerEl.find('#' + record.get('id')).parent();
-            var div_top = div.offset().top;
+            var div_top = Common.Utils.getOffset(div).top;
 
             if (div_top < inner_top || div_top+div.height() > inner_top + innerEl.height()) {
                 if (this.scroller) {
